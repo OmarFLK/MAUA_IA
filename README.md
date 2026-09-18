@@ -87,3 +87,14 @@ npm run build
 - Não exponha `MAUA_AI_BASE_URL`, `DATABASE_URL` ou `JWT_SECRET` no frontend.
 - Mantenha o backend na VM cujo IPv4 fixo será liberado pela Mauá.
 
+## Deploy do frontend na Vercel
+
+O arquivo `vercel.json` da raiz força a Vercel a compilar somente o projeto Vite dentro de `frontend`, mesmo com o FastAPI presente no mesmo repositório.
+
+No projeto da Vercel, cadastre a variável abaixo quando o backend estiver publicado:
+
+```env
+VITE_API_BASE_URL=https://api.seu-dominio.com
+```
+
+Não inclua `/api` nem uma barra no final. Depois de cadastrar ou alterar uma variável `VITE_*`, faça um novo deploy, pois o Vite incorpora esse valor durante o build.

@@ -13,6 +13,7 @@ import {
   Sparkles,
   UserRound,
 } from 'lucide-react'
+import { apiUrl } from './api'
 
 export type AuthUser = {
   id: string
@@ -81,7 +82,7 @@ export default function AuthScreen({ onAuthenticated }: Props) {
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/auth/${mode}`, {
+      const response = await fetch(apiUrl(`/api/auth/${mode}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password }),

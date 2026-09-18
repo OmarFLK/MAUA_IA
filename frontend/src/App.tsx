@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import AuthScreen, { type AuthPayload, type AuthUser } from './AuthScreen'
+import { apiUrl } from './api'
 
 type Role = 'user' | 'assistant'
 
@@ -144,7 +145,7 @@ function App() {
 
   useEffect(() => {
     if (!token) return
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(apiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } })
       .then((response) => {
         if (!response.ok) throw new Error('Sessão expirada')
         return response.json() as Promise<AuthUser>
@@ -171,7 +172,7 @@ function App() {
   }, [settings])
 
   useEffect(() => {
-    fetch('/api/health')
+    fetch(apiUrl('/api/health'))
       .then((response) => {
         if (!response.ok) throw new Error('Backend indisponível')
         return response.json() as Promise<Health>
@@ -269,7 +270,7 @@ function App() {
     }
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         signal: controller.signal,
