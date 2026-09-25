@@ -2,6 +2,8 @@
 
 Chat acadêmico com React + TypeScript, FastAPI e PostgreSQL para consumir a API OpenAI-compatible hospedada na Mauá.
 
+Documentação completa para Obsidian: [docs/00 - Indice Maua AI.md](docs/00%20-%20Indice%20Maua%20AI.md).
+
 ## O que está incluído
 
 - Login, cadastro e sessão JWT.
