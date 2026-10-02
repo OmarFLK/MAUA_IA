@@ -1,102 +1,130 @@
-# Mauá AI Chat
+# Analista SEMOB com Gemma
 
-Chat acadêmico com React + TypeScript, FastAPI e PostgreSQL para consumir a API OpenAI-compatible hospedada na Mauá.
+Chatbot local e independente para análise de transporte público municipal. A aplicação usa FastAPI + React, dados canônicos em Parquet, consultas DuckDB validadas, RAG textual local e o Gemma da Mauá apenas para interpretação dentro do domínio autorizado.
 
-Documentação completa para Obsidian: [docs/00 - Indice Maua AI.md](docs/00%20-%20Indice%20Maua%20AI.md).
+## Estado atual
 
-## O que está incluído
+- Relatórios HTML autorizados preservados localmente em `data/raw`, fora do Git.
+- 10 tabelas canônicas em Parquet e DuckDB.
+- Sobreposição mensal/quinzenal deduplicada com precedência mensal.
+- Perguntas numéricas convertidas em `QueryPlan`; SQL livre não é aceito.
+- Proteção de escopo e prompt controlado pelo backend.
+- RAG local restrito a `knowledge/`.
+- Memória local separada por usuário e conversa.
+- Continuidade conversacional por sessão com deltas sobre o QueryPlan anterior.
+- Dataset e script QLoRA preparados, mas treinamento bloqueado até haver checkpoint local exato e GPU CUDA adequada.
 
-- Login, cadastro e sessão JWT.
-- Senhas protegidas com hash Argon2; senhas nunca são armazenadas em texto puro.
-- Usuários persistidos no PostgreSQL.
-- Chat protegido: somente usuários autenticados acessam a IA.
-- Streaming, Markdown, ajustes de temperatura e raciocínio.
-- Conversas locais separadas por usuário no navegador.
-- Três usuários de teste criados automaticamente em desenvolvimento.
+Veja [arquitetura atual](docs/CURRENT_ARCHITECTURE.md) e [arquitetura da IA](docs/AI_ARCHITECTURE.md). A auditoria com volumes e cobertura reais dos dados permanece local em `docs/DATA_AUDIT.md`, fora do repositório público.
 
-## Executar localmente
+Para alternar entre casa, faculdade e nuvem, veja [uso em redes e IPs diferentes](docs/03%20-%20Uso%20em%20redes%20e%20IPs%20diferentes.md). A autorização é feita no IP público de saída do backend, não em uma lista de IPs dentro do chatbot.
 
-### 1. Configuração
+## Preparar o ambiente
 
-Copie o arquivo de exemplo se ainda não existir um `.env`:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Quando a Mauá fornecer o endereço, substitua `MAUA_AI_BASE_URL` pela URL real terminada em `/v1`.
-
-### 2. PostgreSQL
-
-Com Docker Desktop instalado e aberto:
-
-```powershell
-docker compose up -d postgres
-```
-
-O Compose cria o banco `maua_ai` e mantém seus dados em um volume. Também é possível usar PostgreSQL gratuito do Supabase ou Neon, substituindo `DATABASE_URL` no `.env`.
-
-### 3. Backend
+No PowerShell, dentro da raiz do projeto:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-As tabelas e os usuários de teste são criados ao iniciar o backend.
+O `.env` deve permanecer local. Use `.env.example` como referência e configure a URL OpenAI-compatible fornecida pela Mauá. Credenciais e dados gerados estão ignorados pelo Git.
 
-### 4. Frontend
+## Reconstruir a base
 
-Em outro terminal:
+Os HTMLs devem ficar abaixo de `data/raw`, mantendo as pastas de período e granularidade.
 
 ```powershell
-cd frontend
-npm install
-npm run dev
+.\.venv\Scripts\python.exe -m scripts.ingest_semob
+.\.venv\Scripts\python.exe -m scripts.index_documents
 ```
 
-Abra [http://localhost:5173](http://localhost:5173).
+Saídas locais:
 
-## Contas de teste
+- `data/processed/parquet/*.parquet`
+- `data/database/semob.duckdb`
+- `data/database/rag.sqlite`
+- `data/metadata/catalog.json`
+- `data/metadata/quality_report.json`
 
-| Nome | E-mail | Senha |
-|---|---|---|
-| Ana Silva | `ana@teste.maua.ai` | `Maua@2026` |
-| Bruno Santos | `bruno@teste.maua.ai` | `Maua@2026` |
-| Carla Oliveira | `carla@teste.maua.ai` | `Maua@2026` |
-
-Elas só são criadas quando `SEED_TEST_USERS=true`. No deploy público, altere para `false` e remova essas contas do banco.
-
-## Validação
+## Executar
 
 ```powershell
-# Backend
-.\.venv\Scripts\python.exe -m pytest backend\test_main.py -q
-
-# Frontend
-cd frontend
-npm run lint
-npm run build
+.\start-local.cmd
 ```
 
-## Antes do deploy
+Esse atalho usa o Node portátil em `../.tools/node`, a `.venv` e as dependências do frontend já instaladas. Para uma instalação nova com Python e Node no PATH, siga [migração e execução manual](docs/02%20-%20Migracao%20para%20outro%20PC.md). O Git não inclui `.tools`, `.env`, relatórios de entrada nem bancos locais.
 
-- Gere um `JWT_SECRET` longo e aleatório.
-- Configure `SEED_TEST_USERS=false`.
-- Restrinja `ALLOWED_ORIGINS` ao domínio real do frontend.
-- Use uma conexão PostgreSQL com senha forte e TLS.
-- Não exponha `MAUA_AI_BASE_URL`, `DATABASE_URL` ou `JWT_SECRET` no frontend.
-- Mantenha o backend na VM cujo IPv4 fixo será liberado pela Mauá.
+Abra [http://127.0.0.1:5173](http://127.0.0.1:5173). Para encerrar:
 
-## Deploy do frontend na Vercel
-
-O arquivo `vercel.json` da raiz força a Vercel a compilar somente o projeto Vite dentro de `frontend`, mesmo com o FastAPI presente no mesmo repositório.
-
-No projeto da Vercel, cadastre a variável abaixo quando o backend estiver publicado:
-
-```env
-VITE_API_BASE_URL=https://api.seu-dominio.com
+```powershell
+.\stop-local.cmd
 ```
 
-Não inclua `/api` nem uma barra no final. Depois de cadastrar ou alterar uma variável `VITE_*`, faça um novo deploy, pois o Vite incorpora esse valor durante o build.
+Para uma instalação nova, preencha `MAUA_AI_BASE_URL`, `MAUA_AI_API_KEY` e `JWT_SECRET` no `.env` antes de iniciar. Gere o JWT com `python -c "import secrets; print(secrets.token_hex(32))"`. O valor não deve entrar no Git. Veja [configuração local e migração](docs/02%20-%20Migracao%20para%20outro%20PC.md).
+
+Por padrão, crie sua conta na interface. Se habilitar `SEED_TEST_USERS=true`, configure também `SEED_TEST_PASSWORD` no `.env` local. As contas novas abaixo usarão essa senha; a interface não a preenche nem a revela:
+
+| Usuário | E-mail |
+|---|---|
+| Ana Silva | `ana@teste.maua.ai` |
+| Bruno Santos | `bruno@teste.maua.ai` |
+| Carla Oliveira | `carla@teste.maua.ai` |
+
+Desative as contas demonstrativas antes de qualquer publicação.
+
+Alterar `SEED_TEST_PASSWORD` não troca a senha de contas já existentes. As versões antigas continham senhas de demonstração no código: considere-as públicas e substitua/remova essas contas antes de qualquer deploy. Este commit não apaga o histórico antigo do repositório.
+
+## Perguntas suportadas localmente
+
+Exemplos:
+
+- `Quantas viagens foram realizadas em agosto de 2026?`
+- `Quais as 10 linhas com mais viagens em agosto de 2026?`
+- `Qual foi o total de passageiros em agosto de 2026?`
+- `Mostre a quilometragem improdutiva por dia em agosto de 2026.`
+- `Quais linhas tiveram mais exceções em julho de 2026?`
+
+Essas consultas funcionam sem enviar os dados brutos ao Gemma. Respostas conceituais usam somente o corpus textual local autorizado como contexto do modelo.
+
+Follow-ups podem omitir o contexto já estabelecido, por exemplo: `E julho?`, `Compara com agosto`, `E os não pagantes?`, `E as 5 com menos?` e `E a improdutiva?`.
+
+Pedidos de interpretação, como `O que você acha desses dados?` e `Me dê insights`, usam o Gemma com as evidências calculadas da sessão. Assim, o modelo conversa e interpreta, enquanto os números continuam vindo do DuckDB.
+
+Em desenvolvimento, o estado autenticado pode ser inspecionado em `GET /api/debug/session?conversation_id=<id>`. O endpoint não existe quando `APP_ENVIRONMENT=production`.
+
+## Avaliação e relatórios
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.build_golden_eval
+.\.venv\Scripts\python.exe -m scripts.evaluate_analytics
+.\.venv\Scripts\python.exe -m scripts.generate_insights
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+O conjunto dourado e o relatório exploratório são gerados em diretórios ignorados pelo Git para não publicar resultados derivados dos dados.
+
+## Fine-tuning opcional
+
+Prepare primeiro o dataset local:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.prepare_finetuning
+```
+
+O treino QLoRA exige outra instalação com CUDA, ao menos 24 GB de VRAM para esta receita e uma cópia local autorizada do checkpoint/tokenizer exatos. Downloads de modelo são desativados pelo script:
+
+```powershell
+python -m pip install -r requirements-training.txt
+python -m scripts.train_qlora --model D:\modelos\gemma-3-27b
+```
+
+Não use fine-tuning para memorizar dados operacionais. Métricas continuam sendo calculadas no DuckDB.
+
+## Validação executada
+
+```text
+64 testes Python aprovados em 01/10/2026
+10/10 casos analíticos dourados aprovados
+ESLint aprovado
+Build Vite aprovado
+```

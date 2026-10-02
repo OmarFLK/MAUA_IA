@@ -1,17 +1,17 @@
 import { FormEvent, useState } from 'react'
 import {
   ArrowRight,
+  BarChart3,
+  BusFront,
   Check,
-  Database,
   Eye,
   EyeOff,
-  GraduationCap,
   LoaderCircle,
   LockKeyhole,
   Mail,
   ShieldCheck,
-  Sparkles,
   UserRound,
+  Waypoints,
 } from 'lucide-react'
 import { apiUrl } from './api'
 
@@ -19,6 +19,9 @@ export type AuthUser = {
   id: string
   name: string
   email: string
+  role?: string
+  created_at?: string
+  avatar_url?: string
 }
 
 export type AuthPayload = {
@@ -68,7 +71,7 @@ export default function AuthScreen({ onAuthenticated }: Props) {
   function fillTestAccount(accountEmail: string) {
     setMode('login')
     setEmail(accountEmail)
-    setPassword('Maua@2026')
+    setPassword('')
     setError('')
   }
 
@@ -101,28 +104,28 @@ export default function AuthScreen({ onAuthenticated }: Props) {
     <main className="auth-page">
       <section className="auth-story">
         <div className="auth-brand">
-          <div className="brand-mark"><Sparkles size={20} /></div>
-          <div className="brand-name">Mauá <span>AI</span></div>
+          <div className="brand-mark"><Waypoints size={20} /></div>
+          <div><div className="brand-name">cMob <span>AI</span></div><div className="brand-caption">SEMOB · Inteligência de Mobilidade</div></div>
         </div>
 
         <div className="auth-story-content">
-          <div className="auth-kicker"><span /> AMBIENTE ACADÊMICO SEGURO</div>
-          <h1>Ideias melhores<br />começam com uma<br /><em>boa conversa.</em></h1>
-          <p>Seu assistente acadêmico conectado à infraestrutura de IA da Mauá.</p>
+          <div className="auth-kicker"><span /> SEMOB · ANÁLISE DE MOBILIDADE</div>
+          <h1>cMob AI</h1>
+          <p>Inteligência da SEMOB aplicada à leitura e interpretação de dados de transporte público.</p>
           <div className="auth-benefits">
             <div><ShieldCheck size={19} /><span><strong>Acesso protegido</strong>Somente usuários cadastrados</span></div>
-            <div><Database size={19} /><span><strong>Dados controlados</strong>Credenciais protegidas no PostgreSQL</span></div>
-            <div><GraduationCap size={19} /><span><strong>Feito para projetos</strong>PI, TCC e disciplinas</span></div>
+            <div><BarChart3 size={19} /><span><strong>Análise contextual</strong>Indicadores e comparações operacionais</span></div>
+            <div><BusFront size={19} /><span><strong>Foco em mobilidade</strong>Conversas orientadas a transporte</span></div>
           </div>
         </div>
-        <p className="auth-institution">Instituto Mauá de Tecnologia</p>
+        <p className="auth-institution">SEMOB · cMob AI · Inteligência de Mobilidade</p>
       </section>
 
       <section className="auth-panel">
         <div className="auth-card">
           <div className="auth-mobile-brand">
-            <div className="brand-mark"><Sparkles size={18} /></div>
-            <div className="brand-name">Mauá <span>AI</span></div>
+            <div className="brand-mark"><Waypoints size={18} /></div>
+            <div className="brand-name">cMob <span>AI</span></div>
           </div>
           <div className="auth-heading">
             <p>{mode === 'login' ? 'BEM-VINDO DE VOLTA' : 'COMECE AGORA'}</p>
@@ -176,7 +179,6 @@ export default function AuthScreen({ onAuthenticated }: Props) {
                   </button>
                 ))}
               </div>
-              <p>Senha para todas: <code>Maua@2026</code></p>
             </div>
           )}
         </div>

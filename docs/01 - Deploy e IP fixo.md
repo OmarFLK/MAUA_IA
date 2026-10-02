@@ -5,30 +5,33 @@ tags:
   - infraestrutura
   - maua
 status: pendente
-atualizado: 2026-09-25
+atualizado: 2026-10-02
 ---
 
 # Deploy, IP fixo e liberação com a Mauá
 
 ← [[00 - Indice Maua AI|Voltar para a documentação principal]]
 
+> [!important] Situação atual
+> A rede da Mauá está autorizada segundo o professor. Outras origens, incluindo casa e nuvem, dependem de autorização específica. Para levar o notebook à faculdade ou alternar redes, veja [uso em redes e IPs diferentes](03%20-%20Uso%20em%20redes%20e%20IPs%20diferentes.md). Não é necessário fazer deploy para testar localmente na rede autorizada.
+
 ## Decisão de arquitetura
 
 | Componente | Hospedagem sugerida | Precisa de IP fixo? |
 |---|---|---|
 | Frontend React | Vercel | Não |
-| Backend FastAPI | Oracle Cloud VM ou VPS | **Sim** |
+| Backend FastAPI | VM/VPS ou serviço com saída estável | Saída autorizada e previsível para operação contínua |
 | PostgreSQL | Supabase, Neon ou PostgreSQL da VM | Não |
 | API de IA | Servidor da Mauá | Mantido pela faculdade |
 
-O endereço liberado pela Mauá deve ser o **IPv4 público de saída do backend**. Os IPs dos computadores dos alunos, da Vercel e do banco não precisam entrar na allowlist.
+O endereço liberado pela Mauá deve ser o **IPv4 público de saída do backend**. Quando o backend está na nuvem, os IPs dos computadores dos alunos, da Vercel e do banco não precisam entrar na allowlist. Quando ele roda no notebook, vale a saída da rede em que o notebook está conectado.
 
 > [!danger] Não publicar o backend atual sem autenticação configurada
 > O chat já exige JWT, mas o deploy ainda precisa de HTTPS, segredo JWT forte, CORS restrito e contas demonstrativas desativadas. A API institucional não possui uma chave de autenticação real; um proxy público mal protegido poderia permitir abuso da GPU compartilhada.
 
 ## Opção sugerida para o backend
 
-A primeira tentativa pode ser uma VM **Oracle Cloud Always Free**, com um IP público reservado. Se não houver capacidade gratuita disponível, usar uma VPS barata com IPv4 incluso.
+Escolha um provedor que ofereça saída estável e compatível com a política de autorização da Mauá. Confirme custos, capacidade, persistência do IP e eventuais serviços de NAT antes de contratar. Não presuma gratuidade ou disponibilidade permanente. O guia de redes explica também a saída compartilhada do Render e a diferença entre entrada e saída.
 
 Ao criar a VM:
 
@@ -49,7 +52,7 @@ Links úteis:
 
 ## Mensagem pronta para o professor
 
-> Olá, professor. Provisionamos o backend do projeto em uma VM com IPv4 público reservado. O IP de saída que deve ser liberado na allowlist da API é **COLOCAR-IP-AQUI**. Poderia confirmar a liberação e nos encaminhar a Base URL da API OpenAI-compatible? Utilizaremos o modelo Qwen3.8-27B pelo backend do projeto.
+> Olá, professor. Validamos localmente o acesso ao Gemma 3 27B pela rede da Mauá. Para publicar o backend, provisionamos uma VM com IPv4 público reservado. O IP de saída que deve ser adicionado à allowlist é **COLOCAR-IP-AQUI**. Poderia confirmar a liberação desse endereço externo?
 
 ## Ordem correta do deploy
 
@@ -73,8 +76,9 @@ Devem ser configuradas na VM, nunca no frontend:
 | Variável | Exemplo | Segredo? |
 |---|---|---|
 | `MAUA_AI_BASE_URL` | `https://servidor-da-maua/v1` | Sim, tratar como informação interna |
-| `MAUA_AI_API_KEY` | `maua` | Baixa sensibilidade, mas fica no backend |
-| `MAUA_AI_MODEL` | `qwen/qwen3.8-27b` | Não |
+| `MAUA_AI_API_KEY` | preencher com o valor fornecido pelo responsável | **Sim**, somente no ambiente do backend |
+| `MAUA_AI_MODEL` | `google/gemma-3-27b` | Não |
+| `MAUA_AI_SUPPORTS_THINKING` | `false` | Não |
 | `MAUA_AI_TIMEOUT_SECONDS` | `120` | Não |
 | `DATABASE_URL` | `postgresql+asyncpg://...` | **Sim** |
 | `JWT_SECRET` | valor aleatório longo | **Sim** |
@@ -131,6 +135,7 @@ Usar o `docker-compose.yml` do projeto. É econômico, mas banco e backend ficam
 - [ ] SSH da VM usa chave, não senha simples
 - [ ] `.env` permanece fora do Git
 - [ ] Logs não exibem tokens, senhas ou connection strings
+- [ ] `APP_ENVIRONMENT=production`, sem endpoint de inspeção de sessões
 - [ ] Limite de requisições planejado antes de abrir para muitos usuários
 
 ## Teste de produção
@@ -153,6 +158,6 @@ Usar o `docker-compose.yml` do projeto. É econômico, mas banco e backend ficam
 | `503` sobre Mauá | Base URL ainda não configurada | Definir `MAUA_AI_BASE_URL` |
 | Erro de CORS | Domínio da Vercel não autorizado | Atualizar `ALLOWED_ORIGINS` e reiniciar |
 | Timeout | Fila na GPU ou rede | Manter 120 s e tentar novamente |
-| Resposta vazia | Histórico grande ou raciocínio excessivo | Nova conversa e modo rápido |
+| Resposta vazia | Histórico grande ou limite insuficiente | Nova conversa ou aumentar o limite da resposta |
 | Frontend abre, login falha | `VITE_API_BASE_URL` ausente/incorreta | Corrigir a variável e redeployar |
 

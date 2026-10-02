@@ -1,0 +1,13 @@
+[
+  {"id":"aug_completed_trips","question":"Quantas viagens foram realizadas em agosto de 2026?"},
+  {"id":"jul_scheduled_trips","question":"Quantas viagens foram programadas em julho de 2026?"},
+  {"id":"aug_top_lines","question":"Quais as 5 linhas com mais viagens em agosto de 2026?"},
+  {"id":"sep_total_km","question":"Qual foi a quilometragem total em setembro de 2026?"},
+  {"id":"aug_deadhead_daily","question":"Mostre a quilometragem improdutiva por dia em agosto de 2026."},
+  {"id":"aug_passengers","question":"Qual foi o total de passageiros em agosto de 2026?"},
+  {"id":"sep_non_paying","question":"Quantos passageiros não pagantes houve em setembro de 2026?"},
+  {"id":"jul_exception_lines","question":"Quais linhas tiveram mais exceções em julho de 2026?"},
+  {"id":"aug_sales","question":"Qual foi o total de vendas em agosto de 2026?"},
+  {"id":"single_day_hours","question":"Mostre as viagens por faixa horária em 01/08/2026."}
+]
+

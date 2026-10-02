@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: maua_ai
       POSTGRES_USER: maua
-      POSTGRES_PASSWORD: maua_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env local}
     ports:
       - "5432:5432"
     volumes:

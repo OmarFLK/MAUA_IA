@@ -20,6 +20,7 @@ atualizado: 2026-09-25
 
 - [[01 - Deploy e IP fixo|Deploy, IP fixo e liberação com o professor]]
 - [[02 - Migracao para outro PC|Migração e instalação no PC novo]]
+- [Uso em casa, na Mauá e em redes com IPs diferentes](03%20-%20Uso%20em%20redes%20e%20IPs%20diferentes.md)
 - [README técnico](../README.md)
 - [Repositório no GitHub](https://github.com/OmarFLK/MAUA_IA)
 
@@ -31,11 +32,11 @@ Criar uma interface segura e simples para utilizar o modelo de IA disponibilizad
 
 | Item | Valor atual |
 |---|---|
-| Modelo principal | `qwen/qwen3.8-27b` |
-| Família | Qwen3.8-27B |
+| Modelo principal | `google/gemma-3-27b` |
+| Família | Gemma 3 |
 | Parâmetros | 27 bilhões |
-| Licença informada | Apache 2.0 |
-| Contexto informado | 262 mil tokens |
+| Licença | Gemma Terms of Use |
+| Contexto do modelo de referência | 128 mil tokens |
 | Multimodal | O modelo aceita texto e imagem; a interface atual usa apenas texto |
 | Compatibilidade | API no padrão OpenAI |
 | Streaming | SSE, convertido pelo backend para NDJSON no navegador |
@@ -43,9 +44,9 @@ Criar uma interface segura e simples para utilizar o modelo de IA disponibilizad
 | Timeout | 120 segundos |
 
 > [!important] Identificador do modelo
-> O nome `qwen/qwen3.8-27b` veio da documentação recebida. Quando a Base URL for liberada, devemos consultar `/v1/models` e confirmar o identificador exato antes do teste final.
+> O professor informou o identificador `google/gemma-3-27b`. O endpoint `/v1/models` deve ser consultado a partir da rede da Mauá para confirmar a instalação disponível no servidor.
 
-O modelo utiliza raciocínio intenso por padrão. Para evitar consumo desnecessário de contexto, o sistema inicia no modo rápido enviando `enable_thinking: false`. O usuário pode ativar **Raciocínio profundo** nas configurações do chat.
+O ajuste `enable_thinking`, específico do modelo Qwen usado anteriormente, não é enviado ao Gemma. A interface oculta essa opção quando o backend informa que ela não é suportada.
 
 ## Arquitetura
 
@@ -53,14 +54,14 @@ O modelo utiliza raciocínio intenso por padrão. Para evitar consumo desnecess�
 flowchart LR
     U[Usuário] -->|HTTPS| F[Frontend React<br/>Vercel]
     F -->|JWT + HTTPS| B[Backend FastAPI<br/>VM com IPv4 fixo]
-    B -->|IP autorizado| M[API de IA da Mauá<br/>Qwen3.8-27B]
+    B -->|Rede autorizada| M[API de IA da Mauá<br/>Gemma 3 27B]
     B -->|TLS| P[(PostgreSQL<br/>Supabase, Neon ou VM)]
     F -->|localStorage| H[(Histórico local<br/>por usuário)]
 ```
 
-### Por que o backend precisa de IP fixo?
+### Como o acesso está liberado atualmente?
 
-O professor confirmou que a API da Mauá libera acesso por IP. O IP residencial muda, portanto o backend deve rodar em uma VM com **IPv4 público reservado**. A Mauá adiciona esse IP à allowlist e todas as chamadas passam a sair pelo mesmo endereço.
+O professor liberou as requisições originadas na rede da Mauá. Fora dela, o IP público de saída do backend precisa de autorização específica. Isso vale para casa e para nuvem. A Base URL e o modelo continuam iguais ao trocar de rede; veja o guia de redes acima para diagnóstico e solicitação de acesso.
 
 O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor que chama diretamente a API da Mauá precisa ter o IP liberado.
 
@@ -97,7 +98,7 @@ O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor qu
 2. O backend confere o PostgreSQL e entrega um token JWT.
 3. O frontend envia a pergunta e o token ao endpoint `/api/chat`.
 4. O backend valida o usuário.
-5. O backend adiciona a instrução de sistema e até 40 mensagens recentes do histórico.
+5. O backend resolve o contexto analítico, acrescenta as evidências e envia até 30 mensagens recentes ao modelo. Se o cliente envia apenas a pergunta atual, recupera a memória local daquela conversa e usuário.
 6. A chamada é enviada para `{MAUA_AI_BASE_URL}/chat/completions`.
 7. A Mauá responde em streaming.
 8. O backend repassa os fragmentos ao navegador conforme chegam.
@@ -109,7 +110,7 @@ O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor qu
 - [x] Streaming das respostas
 - [x] Renderização de Markdown, código e tabelas
 - [x] Histórico local com várias conversas
-- [x] Configuração de temperatura, limite de resposta e raciocínio
+- [x] Configuração de temperatura e limite de resposta
 - [x] Tela de login e cadastro
 - [x] Usuários no PostgreSQL
 - [x] Senhas com Argon2
@@ -131,8 +132,8 @@ O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor qu
 - [ ] Criar a VM gratuita ou VPS para o backend
 - [ ] Reservar um IPv4 público permanente nessa VM
 - [ ] Enviar o IPv4 ao professor
-- [ ] Receber a Base URL da API da Mauá
-- [ ] Confirmar se a Mauá liberou o IP
+- [x] Receber a Base URL da API da Mauá
+- [x] Confirmar acesso para requisições originadas na rede da Mauá
 - [ ] Escolher e criar o PostgreSQL de produção
 - [ ] Publicar o backend com HTTPS
 - [ ] Configurar os segredos de produção no backend
@@ -147,9 +148,9 @@ O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor qu
 
 | Nome | E-mail | Senha |
 |---|---|---|
-| Ana Silva | `ana@teste.maua.ai` | `Maua@2026` |
-| Bruno Santos | `bruno@teste.maua.ai` | `Maua@2026` |
-| Carla Oliveira | `carla@teste.maua.ai` | `Maua@2026` |
+| Ana Silva | `ana@teste.maua.ai` | `SEED_TEST_PASSWORD` do `.env` local |
+| Bruno Santos | `bruno@teste.maua.ai` | `SEED_TEST_PASSWORD` do `.env` local |
+| Carla Oliveira | `carla@teste.maua.ai` | `SEED_TEST_PASSWORD` do `.env` local |
 
 > [!warning] Produção
 > Essas contas são apenas para desenvolvimento. Antes do deploy real, usar `SEED_TEST_USERS=false` e excluir os usuários demonstrativos do banco.
@@ -166,7 +167,7 @@ O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor qu
 | Segredo JWT | Variável do backend | Nunca deve entrar no Git |
 | URL pública do backend | Variável da Vercel | Não é um segredo |
 
-Atualmente as conversas não são salvas no PostgreSQL. Isso simplifica a primeira versão, mas significa que o histórico não acompanha o usuário em outro navegador ou computador.
+O histórico visual fica no navegador. O backend também mantém memória e estado analítico em SQLite local, separados por usuário e conversa. Esses arquivos não entram no Git e não sincronizam automaticamente a interface entre computadores. PostgreSQL não armazena essa memória atualmente.
 
 ## Estrutura do repositório
 
@@ -205,10 +206,10 @@ MAUA_IA/
 
 ## Contatos da Mauá
 
-- Responsável técnico informado: `rodrigo.moreira@maua.br`
-- Grupo de suporte: [WhatsApp](https://chat.whatsapp.com/FACq7hfcOAiHz3fl3zrbSR)
+- Responsável técnico: consulte o professor pelo canal institucional da disciplina.
+- Grupo de suporte: solicite o convite ao responsável por canal privado.
 
 ---
 
-Próximo passo recomendado: abrir [[01 - Deploy e IP fixo]] e provisionar a VM do backend.
+Próximo passo recomendado: conectar o computador à rede da Mauá e executar o teste completo de login, modelos e streaming.
 

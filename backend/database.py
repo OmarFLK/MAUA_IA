@@ -15,9 +15,9 @@ SessionFactory = async_sessionmaker(engine, expire_on_commit=False) if engine el
 database_ready = False
 
 TEST_USERS = (
-    ("Ana Silva", "ana@teste.maua.ai", "Maua@2026"),
-    ("Bruno Santos", "bruno@teste.maua.ai", "Maua@2026"),
-    ("Carla Oliveira", "carla@teste.maua.ai", "Maua@2026"),
+    ("Ana Silva", "ana@teste.maua.ai"),
+    ("Bruno Santos", "bruno@teste.maua.ai"),
+    ("Carla Oliveira", "carla@teste.maua.ai"),
 )
 
 
@@ -37,9 +37,11 @@ async def initialize_database(hash_password) -> None:
         existing = set(
             await session.scalars(select(User.email).where(User.email.in_([item[1] for item in TEST_USERS])))
         )
-        for name, email, password in TEST_USERS:
+        for name, email in TEST_USERS:
             if email not in existing:
-                session.add(User(name=name, email=email, password_hash=hash_password(password)))
+                if len(settings.seed_test_password) < 8:
+                    raise ValueError("Defina SEED_TEST_PASSWORD com pelo menos 8 caracteres no .env local para criar contas demonstrativas.")
+                session.add(User(name=name, email=email, password_hash=hash_password(settings.seed_test_password)))
         await session.commit()
 
 
