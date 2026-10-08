@@ -8,7 +8,9 @@ status: pendente
 atualizado: 2026-10-02
 ---
 
-# Deploy, IP fixo e liberação com a Mauá
+# Deploy do backend com a API Barô
+
+> Atualização: a integração atual usa `BARO_API_KEY` e não depende da antiga allowlist de IP. As orientações de IP fixo abaixo descrevem somente a infraestrutura anterior e não devem ser aplicadas à API Barô.
 
 ← [[00 - Indice Maua AI|Voltar para a documentação principal]]
 
@@ -75,11 +77,11 @@ Devem ser configuradas na VM, nunca no frontend:
 
 | Variável | Exemplo | Segredo? |
 |---|---|---|
-| `MAUA_AI_BASE_URL` | `https://servidor-da-maua/v1` | Sim, tratar como informação interna |
-| `MAUA_AI_API_KEY` | preencher com o valor fornecido pelo responsável | **Sim**, somente no ambiente do backend |
-| `MAUA_AI_MODEL` | `google/gemma-3-27b` | Não |
-| `MAUA_AI_SUPPORTS_THINKING` | `false` | Não |
-| `MAUA_AI_TIMEOUT_SECONDS` | `120` | Não |
+| `BARO_BASE_URL` | `https://ia.maua.br/api/v1` | Não |
+| `BARO_API_KEY` | preencher com sua chave pessoal | **Sim**, somente no ambiente do backend |
+| `BARO_MODEL` | `google/gemma-3-27b` | Não |
+| `BARO_SUPPORTS_THINKING` | `false` | Não |
+| `BARO_TIMEOUT_SECONDS` | `120` | Não |
 | `DATABASE_URL` | `postgresql+asyncpg://...` | **Sim** |
 | `JWT_SECRET` | valor aleatório longo | **Sim** |
 | `JWT_EXPIRE_MINUTES` | `480` | Não |
@@ -155,7 +157,7 @@ Usar o `docker-compose.yml` do projeto. É econômico, mas banco e backend ficam
 |---|---|---|
 | `401` | JWT ausente ou expirado | Entrar novamente |
 | `503` sobre banco | `DATABASE_URL` inválida ou banco offline | Conferir conexão e firewall |
-| `503` sobre Mauá | Base URL ainda não configurada | Definir `MAUA_AI_BASE_URL` |
+| `503` sobre Barô | Chave ainda não configurada | Definir `BARO_API_KEY` |
 | Erro de CORS | Domínio da Vercel não autorizado | Atualizar `ALLOWED_ORIGINS` e reiniciar |
 | Timeout | Fila na GPU ou rede | Manter 120 s e tentar novamente |
 | Resposta vazia | Histórico grande ou limite insuficiente | Nova conversa ou aumentar o limite da resposta |

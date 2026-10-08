@@ -48,6 +48,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   language: 'pt-BR',
   dateFormat: 'DD/MM/YYYY',
   showTimestamps: false,
+  defaultAssistant: 'last',
 }
 
 export const MAX_OUTPUT_OPTIONS = [

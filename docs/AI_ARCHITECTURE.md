@@ -12,6 +12,17 @@ Documentos textuais seguem outro fluxo:
 
 Memória de conversa, RAG e fatos analíticos ficam em armazenamentos distintos.
 
+## Assistentes e provider compartilhado
+
+A plataforma expõe dois assistentes, escolhidos explicitamente pelo usuário em cada conversa:
+
+- `cmob`: usa guardrails de domínio, estado conversacional estruturado, QueryPlan, DuckDB, RAG autorizado e o prompt especializado.
+- `general`: usa o mesmo provider Gemma com um prompt geral, sem consultar RAG, catálogo, DuckDB, Analytics Engine ou estado CMob.
+
+O campo `assistant` faz parte do contrato de `/api/chat`; o backend nunca infere o modo pelo texto da pergunta. O `AssistantRegistry` resolve um `AssistantPipeline`, enquanto a chamada OpenAI-compatible permanece compartilhada. Histórico e memória usam `assistant_mode` como namespace, e registros anteriores recebem `cmob` como padrão durante a migração.
+
+Os prompts ficam separados em `prompts/cmob_system.md` e `prompts/general_system.md`. O provider institucional atual expõe apenas um identificador de modelo e não demonstrou troca dinâmica de adapters. Por isso `adapter_name` faz parte da fronteira do pipeline, mas permanece vazio; um LoRA CMob futuro não deve ser apresentado como ativo até o runtime oferecer suporte real.
+
 ## Camadas
 
 1. **Dados brutos**: HTML original, CP1252, imutável.

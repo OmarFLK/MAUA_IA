@@ -18,7 +18,7 @@ atualizado: 2026-09-25
 
 ## Navegação
 
-- [[01 - Deploy e IP fixo|Deploy, IP fixo e liberação com o professor]]
+  - [[01 - Deploy e IP fixo|Deploy do backend com a API Barô]]
 - [[02 - Migracao para outro PC|Migração e instalação no PC novo]]
 - [Uso em casa, na Mauá e em redes com IPs diferentes](03%20-%20Uso%20em%20redes%20e%20IPs%20diferentes.md)
 - [README técnico](../README.md)
@@ -54,14 +54,14 @@ O ajuste `enable_thinking`, específico do modelo Qwen usado anteriormente, não
 flowchart LR
     U[Usuário] -->|HTTPS| F[Frontend React<br/>Vercel]
     F -->|JWT + HTTPS| B[Backend FastAPI<br/>VM com IPv4 fixo]
-    B -->|Rede autorizada| M[API de IA da Mauá<br/>Gemma 3 27B]
+    B -->|BARO_API_KEY| M[API Barô da Mauá<br/>Gemma 3 27B]
     B -->|TLS| P[(PostgreSQL<br/>Supabase, Neon ou VM)]
     F -->|localStorage| H[(Histórico local<br/>por usuário)]
 ```
 
 ### Como o acesso está liberado atualmente?
 
-O professor liberou as requisições originadas na rede da Mauá. Fora dela, o IP público de saída do backend precisa de autorização específica. Isso vale para casa e para nuvem. A Base URL e o modelo continuam iguais ao trocar de rede; veja o guia de redes acima para diagnóstico e solicitação de acesso.
+A autenticação da API Barô usa uma chave pessoal em `BARO_API_KEY`. A URL e o modelo permanecem iguais entre casa, faculdade e nuvem; a credencial deve existir apenas no ambiente do backend.
 
 O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor que chama diretamente a API da Mauá precisa ter o IP liberado.
 
@@ -79,7 +79,7 @@ O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor qu
 ### Backend
 
 - Python + FastAPI
-- HTTPX para comunicação e streaming com a Mauá
+- SDK OpenAI sobre HTTPX para comunicação e streaming com a Barô
 - SQLAlchemy assíncrono
 - JWT para autenticação
 - Argon2 para hash das senhas
@@ -99,7 +99,7 @@ O frontend e o PostgreSQL podem ficar em outros provedores. Apenas o servidor qu
 3. O frontend envia a pergunta e o token ao endpoint `/api/chat`.
 4. O backend valida o usuário.
 5. O backend resolve o contexto analítico, acrescenta as evidências e envia até 30 mensagens recentes ao modelo. Se o cliente envia apenas a pergunta atual, recupera a memória local daquela conversa e usuário.
-6. A chamada é enviada para `{MAUA_AI_BASE_URL}/chat/completions`.
+6. A chamada é enviada para `https://ia.maua.br/api/v1/chat/completions` pelo cliente OpenAI.
 7. A Mauá responde em streaming.
 8. O backend repassa os fragmentos ao navegador conforme chegam.
 9. O navegador renderiza Markdown e salva a conversa localmente.

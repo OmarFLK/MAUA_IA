@@ -6,6 +6,7 @@ from typing import Annotated
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
@@ -28,6 +29,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     name: str
     email: EmailStr
+    role: str
 
     model_config = {"from_attributes": True}
 
@@ -55,6 +57,27 @@ class RegisterRequest(BaseModel):
         if len(cleaned) < 2:
             raise ValueError("Informe um nome válido.")
         return cleaned
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str) -> str:
+        cleaned = " ".join(value.split())
+        if len(cleaned) < 2:
+            raise ValueError("Informe um nome válido.")
+        return cleaned
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
 
 
 def hash_password(password: str) -> str:
@@ -135,6 +158,8 @@ async def login(
     user = await session.scalar(select(User).where(User.email == request.email.lower()))
     if not user or not verify_password(request.password, user.password_hash) or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos.")
+    user.last_login_at = datetime.now(timezone.utc)
+    await session.commit()
     return token_response(user)
 
 
@@ -142,3 +167,40 @@ async def login(
 async def me(current_user: Annotated[User, Depends(get_current_user)]) -> User:
     return current_user
 
+
+@router.patch("/me", response_model=UserResponse)
+async def update_profile(
+    request: ProfileUpdateRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> User:
+    current_user.name = request.name
+    await session.commit()
+    await session.refresh(current_user)
+    return current_user
+
+
+@router.put("/password", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def change_password(
+    request: PasswordChangeRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    if not verify_password(request.current_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Senha atual incorreta.")
+    current_user.password_hash = hash_password(request.new_password)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/account", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def delete_account(
+    request: AccountDeleteRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> Response:
+    if not verify_password(request.password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Senha incorreta.")
+    await session.delete(current_user)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

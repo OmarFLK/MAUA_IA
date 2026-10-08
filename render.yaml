@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: cmob-ai-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/ready
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_AUTO_CREATE
+        value: "false"
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "10"
+      - key: BARO_API_KEY
+        sync: false
+      - key: BARO_BASE_URL
+        value: https://ia.maua.br/api/v1
+      - key: BARO_MODEL
+        value: google/gemma-3-27b
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: APP_ENVIRONMENT
+        value: production
+      - key: SEED_TEST_USERS
+        value: "false"

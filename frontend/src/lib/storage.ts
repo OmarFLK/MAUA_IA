@@ -1,13 +1,14 @@
 import { DEFAULT_SETTINGS } from '../config/aiPresets'
-import type { Conversation, LocalProfile, UsageRecord, UserSettings } from '../types'
+import type { AssistantMode, Conversation, LocalProfile, UsageRecord, UserSettings } from '../types'
 
 const CONVERSATIONS_KEY = 'cmob-ai-conversations-v2'
 const SETTINGS_KEY = 'cmob-ai-settings-v2'
 const PROFILE_KEY = 'cmob-ai-profile-v1'
 const USAGE_KEY = 'cmob-ai-usage-v1'
+const LAST_ASSISTANT_KEY = 'cmob-ai-last-assistant-v1'
 
-export function createConversation(): Conversation {
-  return { id: crypto.randomUUID(), title: 'Nova conversa', messages: [], updatedAt: Date.now() }
+export function createConversation(assistantMode: AssistantMode = 'cmob'): Conversation {
+  return { id: crypto.randomUUID(), title: 'Nova conversa', assistantMode, messages: [], updatedAt: Date.now() }
 }
 
 export function loadConversations(userId: string): Conversation[] {
@@ -18,6 +19,7 @@ export function loadConversations(userId: string): Conversation[] {
       if (Array.isArray(parsed) && parsed.length) {
         return parsed.map((conversation) => ({
           ...conversation,
+          assistantMode: conversation.assistantMode ?? 'cmob',
           messages: conversation.messages.map((message) => ({ ...message, createdAt: message.createdAt ?? conversation.updatedAt })),
         }))
       }
@@ -72,5 +74,14 @@ export function loadUsage(userId: string): UsageRecord[] {
 
 export function saveUsage(userId: string, records: UsageRecord[]) {
   localStorage.setItem(`${USAGE_KEY}:${userId}`, JSON.stringify(records.slice(-500)))
+}
+
+export function loadLastAssistant(userId: string): AssistantMode | null {
+  const value = localStorage.getItem(`${LAST_ASSISTANT_KEY}:${userId}`)
+  return value === 'cmob' || value === 'general' ? value : null
+}
+
+export function saveLastAssistant(userId: string, mode: AssistantMode) {
+  localStorage.setItem(`${LAST_ASSISTANT_KEY}:${userId}`, mode)
 }
 

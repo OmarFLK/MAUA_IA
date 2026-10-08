@@ -21,6 +21,8 @@ Assuntos explicitamente fora do domínio e tentativas de prompt injection são b
 
 ## Três níveis de memória
 
+Todas as leituras e escritas de turnos incluem `assistant_mode`. Conversas antigas recebem `cmob` por padrão. O modo `general` nunca recupera turnos, estado analítico ou ofertas do CMob; o modo `cmob` nunca incorpora automaticamente uma conversa geral.
+
 ### Session state
 
 `data/database/session.sqlite` mantém o estado estruturado por usuário e sessão: assunto, dataset, métricas, períodos, filtros, agrupamentos, entidades, último plano, plano de comparação, resumo do resultado e interações relevantes.

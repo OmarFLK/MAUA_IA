@@ -60,8 +60,9 @@ SQLite é o padrão local sem Docker; o driver está em `requirements-dev.txt`. 
 
 | Variável local | Como configurar |
 |---|---|
-| `MAUA_AI_BASE_URL` | Solicite o endpoint ao professor, incluindo `/v1`; não é o IP residencial |
-| `MAUA_AI_API_KEY` | Solicite o valor ao professor; use apenas no `.env` |
+| `BARO_BASE_URL` | `https://ia.maua.br/api/v1` |
+| `BARO_API_KEY` | Sua chave pessoal da Barô; use apenas no `.env` |
+| `BARO_MODEL` | `google/gemma-3-27b` |
 | `JWT_SECRET` | Gere um segredo aleatório com pelo menos 32 caracteres; sem ele o backend não inicia |
 | `SEED_TEST_PASSWORD` | Necessária apenas se `SEED_TEST_USERS=true`, mínimo 8 caracteres |
 | `POSTGRES_PASSWORD` | Necessária apenas para PostgreSQL no Docker |

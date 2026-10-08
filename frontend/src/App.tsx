@@ -2,6 +2,7 @@ import { LoaderCircle } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import AuthScreen, { type AuthPayload, type AuthUser } from './AuthScreen'
 import { apiUrl } from './api'
+import AssistantWelcome from './components/assistant/AssistantWelcome'
 import ChatView from './components/chat/ChatView'
 import AdminPage from './components/pages/AdminPage'
 import HistoryPage from './components/pages/HistoryPage'
@@ -11,8 +12,8 @@ import Sidebar from './components/sidebar/Sidebar'
 import Brand from './components/ui/Brand'
 import { DEFAULT_SETTINGS } from './config/aiPresets'
 import { pathFor, viewFromPath } from './lib/routing'
-import { createConversation, loadConversations, loadProfile, loadSettings, loadUsage, saveConversations, saveProfile, saveSettings, saveUsage } from './lib/storage'
-import type { AppView, AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UsageRecord, UserSettings } from './types'
+import { createConversation, loadConversations, loadLastAssistant, loadProfile, loadSettings, loadUsage, saveConversations, saveLastAssistant, saveProfile, saveSettings, saveUsage } from './lib/storage'
+import type { AppView, AssistantMode, AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UsageRecord, UserSettings } from './types'
 
 const AUTH_TOKEN_KEY = 'maua-ai-auth-token'
 
@@ -35,9 +36,12 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>('cmob')
+  const [needsAssistantChoice, setNeedsAssistantChoice] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const activeConversation = useMemo(() => conversations.find((item) => item.id === activeId) ?? conversations[0], [activeId, conversations])
+  const assistantConversations = useMemo(() => conversations.filter((item) => item.assistantMode === assistantMode), [assistantMode, conversations])
   const isAdmin = user?.role?.toLocaleLowerCase('pt-BR') === 'admin'
 
   useEffect(() => {
@@ -107,12 +111,22 @@ function App() {
   }, [settings.theme, settings.density, settings.chatFontSize])
 
   function initializeUser(authenticatedUser: AuthUser) {
-    const savedConversations = loadConversations(authenticatedUser.id)
+    let savedConversations = loadConversations(authenticatedUser.id)
+    const savedSettings = loadSettings(authenticatedUser.id)
+    const lastAssistant = loadLastAssistant(authenticatedUser.id)
+    const initialMode = savedSettings.defaultAssistant === 'last' ? (lastAssistant ?? 'cmob') : savedSettings.defaultAssistant
+    let initialConversation = savedConversations.find((conversation) => conversation.assistantMode === initialMode)
+    if (!initialConversation) {
+      initialConversation = createConversation(initialMode)
+      savedConversations = [initialConversation, ...savedConversations]
+    }
     setUser(authenticatedUser)
     setConversations(savedConversations)
-    setActiveId(savedConversations[0].id)
+    setActiveId(initialConversation.id)
+    setAssistantMode(initialMode)
+    setNeedsAssistantChoice(savedSettings.defaultAssistant === 'last' && lastAssistant === null)
     setProfile(loadProfile(authenticatedUser.id, authenticatedUser.name))
-    setSettings(loadSettings(authenticatedUser.id))
+    setSettings(savedSettings)
     setUsageRecords(loadUsage(authenticatedUser.id))
   }
 
@@ -128,7 +142,7 @@ function App() {
 
   function newConversation() {
     abortRef.current?.abort()
-    const conversation = createConversation()
+    const conversation = createConversation(assistantMode)
     setConversations((current) => [conversation, ...current])
     setActiveId(conversation.id)
     setInput('')
@@ -138,6 +152,11 @@ function App() {
   }
 
   function selectConversation(id: string) {
+    const selected = conversations.find((conversation) => conversation.id === id)
+    if (selected && selected.assistantMode !== assistantMode) {
+      setAssistantMode(selected.assistantMode)
+      if (user) saveLastAssistant(user.id, selected.assistantMode)
+    }
     setActiveId(id)
     setMobileOpen(false)
     setLatestUsage(null)
@@ -148,14 +167,37 @@ function App() {
     if (!window.confirm('Excluir esta conversa deste navegador?')) return
     setConversations((current) => {
       const remaining = current.filter((conversation) => conversation.id !== id)
-      if (remaining.length) {
-        if (id === activeId) setActiveId(remaining[0].id)
+      if (id !== activeId) return remaining
+      const sameAssistant = remaining.filter((conversation) => conversation.assistantMode === assistantMode)
+      if (sameAssistant.length) {
+        setActiveId(sameAssistant[0].id)
         return remaining
       }
-      const fresh = createConversation()
+      const fresh = createConversation(assistantMode)
       setActiveId(fresh.id)
-      return [fresh]
+      return [fresh, ...remaining]
     })
+  }
+
+  function switchAssistant(mode: AssistantMode) {
+    abortRef.current?.abort()
+    setAssistantMode(mode)
+    setNeedsAssistantChoice(false)
+    if (user) saveLastAssistant(user.id, mode)
+    const existing = conversations
+      .filter((conversation) => conversation.assistantMode === mode)
+      .sort((a, b) => b.updatedAt - a.updatedAt)[0]
+    if (existing) {
+      setActiveId(existing.id)
+    } else {
+      const fresh = createConversation(mode)
+      setConversations((current) => [fresh, ...current])
+      setActiveId(fresh.id)
+    }
+    setInput('')
+    setLatestUsage(null)
+    setMobileOpen(false)
+    navigate('chat')
   }
 
   function renameConversation(id: string, title: string) {
@@ -228,7 +270,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         signal: controller.signal,
-        body: JSON.stringify({ messages: requestMessages.slice(-40).map(({ role, content: messageContent }) => ({ role, content: messageContent })), temperature: settings.temperature, max_tokens: settings.maxTokens, thinking: Boolean(health?.supports_thinking && settings.thinking), conversation_id: current.id }),
+        body: JSON.stringify({ messages: requestMessages.slice(-40).map(({ role, content: messageContent }) => ({ role, content: messageContent })), temperature: settings.temperature, max_tokens: settings.maxTokens, thinking: Boolean(health?.supports_thinking && settings.thinking), conversation_id: current.id, assistant: current.assistantMode }),
       })
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { detail?: string } | null
@@ -257,7 +299,7 @@ function App() {
       patchAssistant({ content: errorMessage, reasoning, pending: false, error: !aborted })
     } finally {
       const durationMs = performance.now() - startedAt
-      setUsageRecords((records) => [...records, { id: crypto.randomUUID(), timestamp: Date.now(), conversationId: current.id, usage: responseUsage, durationMs, ttftMs: firstTokenAt ? firstTokenAt - startedAt : undefined, status: requestStatus }].slice(-500))
+      setUsageRecords((records) => [...records, { id: crypto.randomUUID(), timestamp: Date.now(), conversationId: current.id, assistantMode: current.assistantMode, usage: responseUsage, durationMs, ttftMs: firstTokenAt ? firstTokenAt - startedAt : undefined, status: requestStatus }].slice(-500))
       setIsStreaming(false)
       abortRef.current = null
     }
@@ -289,16 +331,17 @@ function App() {
 
   if (!authReady) return <div className="app-loading"><Brand /><LoaderCircle className="spin" size={21} /></div>
   if (!user || !token) return <AuthScreen onAuthenticated={authenticated} />
+  if (needsAssistantChoice) return <AssistantWelcome onSelect={switchAssistant} />
 
   let content: ReactNode
-  if (view === 'chat') content = <ChatView conversation={activeConversation} user={user} profile={profile} health={health} models={models} connectionError={connectionError} input={input} usage={latestUsage} settings={settings} isStreaming={isStreaming} copiedId={copiedId} onOpenMenu={() => setMobileOpen(true)} onInput={setInput} onSend={(value) => void sendMessage(value)} onStop={() => abortRef.current?.abort()} onCopy={(message) => void copyMessage(message)} onRegenerate={(id) => void sendMessage(undefined, id)} onFeedback={feedback} onClear={clearConversation} />
-  else if (view === 'history') content = <HistoryPage conversations={conversations} settings={settings} onOpen={selectConversation} onDelete={deleteConversation} onRename={renameConversation} />
-  else if (view === 'analyses') content = <AnalysesPage conversations={conversations} onOpen={selectConversation} />
-  else if (view === 'memory') content = <MemoryPage conversations={conversations} />
+  if (view === 'chat') content = <ChatView conversation={activeConversation} user={user} profile={profile} health={health} models={models} connectionError={connectionError} input={input} usage={latestUsage} settings={settings} isStreaming={isStreaming} copiedId={copiedId} assistantMode={assistantMode} onOpenMenu={() => setMobileOpen(true)} onInput={setInput} onSend={(value) => void sendMessage(value)} onStop={() => abortRef.current?.abort()} onCopy={(message) => void copyMessage(message)} onRegenerate={(id) => void sendMessage(undefined, id)} onFeedback={feedback} onClear={clearConversation} onAssistantChange={switchAssistant} />
+  else if (view === 'history') content = <HistoryPage conversations={conversations} assistantMode={assistantMode} settings={settings} onOpen={selectConversation} onDelete={deleteConversation} onRename={renameConversation} />
+  else if (view === 'analyses') content = <AnalysesPage conversations={assistantConversations} onOpen={selectConversation} />
+  else if (view === 'memory') content = <MemoryPage conversations={assistantConversations} />
   else if (view.startsWith('settings-')) content = <SettingsPage view={view} user={user} profile={profile} settings={settings} health={health} onNavigate={navigate} onProfile={setProfile} onSettings={setSettings} />
   else content = <AdminPage view={view} isAdmin={isAdmin} health={health} models={models} usageRecords={usageRecords} settings={settings} onSettings={setSettings} />
 
-  return <div className="app-shell-v2">{mobileOpen && <button className="sidebar-scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}<Sidebar view={view} conversations={conversations} activeId={activeId} user={user} profile={profile} isAdmin={isAdmin} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} onNavigate={navigate} onNewChat={newConversation} onSelectConversation={selectConversation} onDeleteConversation={deleteConversation} onRenameConversation={renameConversation} onLogout={logout} />{content}</div>
+  return <div className="app-shell-v2">{mobileOpen && <button className="sidebar-scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}<Sidebar view={view} conversations={assistantConversations} activeId={activeId} user={user} profile={profile} isAdmin={isAdmin} mobileOpen={mobileOpen} assistantMode={assistantMode} onCloseMobile={() => setMobileOpen(false)} onNavigate={navigate} onNewChat={newConversation} onSelectConversation={selectConversation} onDeleteConversation={deleteConversation} onRenameConversation={renameConversation} onLogout={logout} />{content}</div>
 }
 
 export default App

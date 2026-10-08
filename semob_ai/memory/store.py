@@ -28,14 +28,20 @@ class MemoryStore:
                 id INTEGER PRIMARY KEY,
                 user_id TEXT NOT NULL,
                 conversation_id TEXT NOT NULL,
+                assistant_mode TEXT NOT NULL DEFAULT 'cmob',
                 role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
                 content TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 expires_at TEXT NOT NULL
             )"""
         )
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(conversation_turns)")}
+        if "assistant_mode" not in columns:
+            connection.execute(
+                "ALTER TABLE conversation_turns ADD COLUMN assistant_mode TEXT NOT NULL DEFAULT 'cmob'"
+            )
         connection.execute(
-            "CREATE INDEX IF NOT EXISTS ix_turn_owner ON conversation_turns(user_id, conversation_id, created_at)"
+            "CREATE INDEX IF NOT EXISTS ix_turn_owner_mode ON conversation_turns(user_id, assistant_mode, conversation_id, created_at)"
         )
         connection.execute(
             """CREATE TABLE IF NOT EXISTS preferences (
@@ -46,9 +52,17 @@ class MemoryStore:
                 PRIMARY KEY(user_id, key)
             )"""
         )
+        connection.commit()
         return connection
 
-    def add_turn(self, user_id: str, conversation_id: str, role: str, content: str) -> None:
+    def add_turn(
+        self,
+        user_id: str,
+        conversation_id: str,
+        role: str,
+        content: str,
+        assistant_mode: str = "cmob",
+    ) -> None:
         if role not in {"user", "assistant"}:
             raise ValueError("Papel de memória inválido.")
         now = datetime.now(timezone.utc)
@@ -56,21 +70,33 @@ class MemoryStore:
         connection = self._connect()
         try:
             connection.execute(
-                "INSERT INTO conversation_turns(user_id, conversation_id, role, content, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, conversation_id, role, content, now.isoformat(), expires.isoformat()),
+                "INSERT INTO conversation_turns(user_id, conversation_id, assistant_mode, role, content, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (user_id, conversation_id, assistant_mode, role, content, now.isoformat(), expires.isoformat()),
             )
             connection.commit()
         finally:
             connection.close()
 
-    def recent(self, user_id: str, conversation_id: str, limit: int = 12) -> list[MemoryTurn]:
+    def recent(
+        self,
+        user_id: str,
+        conversation_id: str,
+        limit: int = 12,
+        assistant_mode: str = "cmob",
+    ) -> list[MemoryTurn]:
         connection = self._connect()
         try:
             rows = connection.execute(
                 """SELECT role, content, created_at FROM conversation_turns
-                   WHERE user_id = ? AND conversation_id = ? AND expires_at > ?
+                   WHERE user_id = ? AND conversation_id = ? AND assistant_mode = ? AND expires_at > ?
                    ORDER BY created_at DESC LIMIT ?""",
-                (user_id, conversation_id, datetime.now(timezone.utc).isoformat(), min(limit, 50)),
+                (
+                    user_id,
+                    conversation_id,
+                    assistant_mode,
+                    datetime.now(timezone.utc).isoformat(),
+                    min(limit, 50),
+                ),
             ).fetchall()
         finally:
             connection.close()

@@ -2,7 +2,7 @@
 
 ## Resumo executivo
 
-O repositório é hoje um cliente web local para uma API OpenAI-compatible da Mauá. Ele **não contém nem carrega os pesos do Gemma localmente**. O modelo é executado em um servidor remoto configurado por `MAUA_AI_BASE_URL`; o backend FastAPI protege a credencial e transmite a resposta ao frontend React.
+O repositório é hoje um cliente web local para a API OpenAI-compatible Barô da Mauá. Ele **não contém nem carrega os pesos do Gemma localmente**. O modelo é executado em `https://ia.maua.br/api/v1`; o backend FastAPI lê `BARO_API_KEY`, protege a credencial e transmite a resposta ao frontend React.
 
 O trabalho SEMOB foi acrescentado como um subsistema independente e local. Os HTMLs brutos permanecem em `data/raw`, os dados normalizados são gravados em Parquet e o mecanismo analítico é DuckDB. Nenhum dado operacional é enviado ao modelo durante a ingestão.
 
@@ -11,8 +11,9 @@ O trabalho SEMOB foi acrescentado como um subsistema independente e local. Os HT
 | Componente | Tecnologia | Responsabilidade |
 |---|---|---|
 | `frontend/` | React, TypeScript, Vite | Login, conversas e streaming |
-| `backend/` | FastAPI, HTTPX | Autenticação e proxy para o servidor Mauá |
-| `backend/database.py` | SQLAlchemy async | Usuários em PostgreSQL ou SQLite local |
+| `backend/` | FastAPI, OpenAI SDK e HTTPX | Autenticação e streaming para a API Barô |
+| `backend/database.py` | SQLAlchemy async + Alembic | Pool, sessões e schema PostgreSQL |
+| `backend/conversations.py` | FastAPI + SQLAlchemy | Conversas, mensagens, preferências e estado persistente |
 | `semob_ai/ingestion/` | BeautifulSoup, Pandas, PyArrow | Leitura CP1252, normalização e proveniência |
 | `data/processed/parquet/` | Parquet | Camada canônica analítica |
 | `data/database/semob.duckdb` | DuckDB | Consultas locais somente leitura |
@@ -46,7 +47,7 @@ No estado anterior à camada SEMOB, o modelo recebia um prompt acadêmico genér
 
 ## Limites e riscos encontrados
 
-- O histórico principal fica no `localStorage` do navegador, não em memória semântica controlada.
+- O frontend ainda mantém uma cópia de conveniência no `localStorage`, mas o backend persiste as mensagens e o estado por usuário no PostgreSQL.
 - O cliente podia enviar mensagens `system`; o backend precisa ignorá-las no modo SEMOB.
 - Não existia catálogo, camada analítica, RAG ou proteção de escopo.
 - A API remota não oferece, pelo contrato observado, uma operação de fine-tuning.

@@ -7,14 +7,20 @@ $pythonExe = Join-Path $repoDir ".venv\Scripts\python.exe"
 $frontendDir = Join-Path $repoDir "frontend"
 $runDir = Join-Path $repoDir ".local-run"
 
-$nodeExe = Get-ChildItem -LiteralPath (Join-Path $toolsDir "node") -Recurse -Filter "node.exe" |
-    Select-Object -First 1 -ExpandProperty FullName
+$portableNodeDir = Join-Path $toolsDir "node"
+$nodeExe = if (Test-Path -LiteralPath $portableNodeDir) {
+    Get-ChildItem -LiteralPath $portableNodeDir -Recurse -Filter "node.exe" |
+        Select-Object -First 1 -ExpandProperty FullName
+} else {
+    $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
+    if ($nodeCommand) { $nodeCommand.Source } else { $null }
+}
 
 if (-not (Test-Path -LiteralPath $pythonExe)) {
     throw "Python virtual environment not found at $pythonExe"
 }
 if (-not $nodeExe) {
-    throw "Portable Node.js was not found under $toolsDir\node"
+    throw "Node.js was not found under $toolsDir\node or on PATH"
 }
 
 $viteCli = Join-Path $frontendDir "node_modules\vite\bin\vite.js"
@@ -23,6 +29,12 @@ if (-not (Test-Path -LiteralPath $viteCli)) {
 }
 
 New-Item -ItemType Directory -Force -Path $runDir | Out-Null
+
+Write-Host "Applying database migrations..."
+& $pythonExe -m alembic upgrade head
+if ($LASTEXITCODE -ne 0) {
+    throw "Database migration failed. Check DATABASE_URL and the database service."
+}
 
 function Test-ListeningPort {
     param([int]$Port)
@@ -124,9 +136,11 @@ if (-not ($backendReady -and $frontendReady)) {
     throw "Local services did not become ready. Check logs in $runDir"
 }
 
-$aiBaseUrl = (Get-DotEnvValue -Name "MAUA_AI_BASE_URL").TrimEnd("/")
-$aiApiKey = Get-DotEnvValue -Name "MAUA_AI_API_KEY"
-$aiModel = Get-DotEnvValue -Name "MAUA_AI_MODEL"
+$aiBaseUrl = (Get-DotEnvValue -Name "BARO_BASE_URL").TrimEnd("/")
+if (-not $aiBaseUrl) { $aiBaseUrl = "https://ia.maua.br/api/v1" }
+$aiApiKey = Get-DotEnvValue -Name "BARO_API_KEY"
+$aiModel = Get-DotEnvValue -Name "BARO_MODEL"
+if (-not $aiModel) { $aiModel = "google/gemma-3-27b" }
 $aiNetworkReady = $false
 
 if ($aiBaseUrl) {
@@ -146,8 +160,8 @@ Write-Host "Chat:    http://127.0.0.1:5173"
 Write-Host "Backend: http://127.0.0.1:8000"
 Write-Host "Docs:    http://127.0.0.1:8000/docs"
 if ($aiNetworkReady) {
-    Write-Host "Gemma:   accessible from the current network ($aiModel)" -ForegroundColor Green
+    Write-Host "Baro:    API accessible ($aiModel)" -ForegroundColor Green
 } else {
-    Write-Warning "Gemma is not accessible from the current network. Confirm that this public IP is authorized."
+    Write-Warning "Baro API is not accessible. Confirm BARO_API_KEY and your internet connection."
 }
 Write-Host "Stop:    .\stop-local.cmd"

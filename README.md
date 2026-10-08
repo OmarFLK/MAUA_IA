@@ -1,6 +1,6 @@
-# Analista SEMOB com Gemma
+# Analista SEMOB com Gemma via Barô
 
-Chatbot local e independente para análise de transporte público municipal. A aplicação usa FastAPI + React, dados canônicos em Parquet, consultas DuckDB validadas, RAG textual local e o Gemma da Mauá apenas para interpretação dentro do domínio autorizado.
+Chatbot local para análise de transporte público municipal. A aplicação usa FastAPI + React, dados canônicos em Parquet, consultas DuckDB validadas, RAG textual local e o modelo `google/gemma-3-27b` pela API OpenAI-compatible Barô da Mauá.
 
 ## Estado atual
 
@@ -11,12 +11,14 @@ Chatbot local e independente para análise de transporte público municipal. A a
 - Proteção de escopo e prompt controlado pelo backend.
 - RAG local restrito a `knowledge/`.
 - Memória local separada por usuário e conversa.
+- Dois assistentes sobre o mesmo Gemma via Barô: CMob AI especializado e Gemma Livre de propósito geral.
+- Histórico, contexto e memória isolados por assistente.
 - Continuidade conversacional por sessão com deltas sobre o QueryPlan anterior.
 - Dataset e script QLoRA preparados, mas treinamento bloqueado até haver checkpoint local exato e GPU CUDA adequada.
 
 Veja [arquitetura atual](docs/CURRENT_ARCHITECTURE.md) e [arquitetura da IA](docs/AI_ARCHITECTURE.md). A auditoria com volumes e cobertura reais dos dados permanece local em `docs/DATA_AUDIT.md`, fora do repositório público.
 
-Para alternar entre casa, faculdade e nuvem, veja [uso em redes e IPs diferentes](docs/03%20-%20Uso%20em%20redes%20e%20IPs%20diferentes.md). A autorização é feita no IP público de saída do backend, não em uma lista de IPs dentro do chatbot.
+O backend é o único componente que acessa a Barô. A chave pessoal permanece no ambiente local e nunca é enviada ao navegador.
 
 ## Preparar o ambiente
 
@@ -27,7 +29,21 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-O `.env` deve permanecer local. Use `.env.example` como referência e configure a URL OpenAI-compatible fornecida pela Mauá. Credenciais e dados gerados estão ignorados pelo Git.
+Crie o `.env` local a partir do exemplo:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Preencha sua chave sem aspas e mantenha os demais valores padrão:
+
+```dotenv
+BARO_API_KEY=cole_sua_chave_aqui
+BARO_BASE_URL=https://ia.maua.br/api/v1
+BARO_MODEL=google/gemma-3-27b
+```
+
+O `.env` está ignorado pelo Git e deve permanecer local. Nunca coloque a chave real no README, no código-fonte ou em commits.
 
 ## Reconstruir a base
 
@@ -60,7 +76,16 @@ Abra [http://127.0.0.1:5173](http://127.0.0.1:5173). Para encerrar:
 .\stop-local.cmd
 ```
 
-Para uma instalação nova, preencha `MAUA_AI_BASE_URL`, `MAUA_AI_API_KEY` e `JWT_SECRET` no `.env` antes de iniciar. Gere o JWT com `python -c "import secrets; print(secrets.token_hex(32))"`. O valor não deve entrar no Git. Veja [configuração local e migração](docs/02%20-%20Migracao%20para%20outro%20PC.md).
+Para uma instalação nova, preencha `BARO_API_KEY` e `JWT_SECRET` no `.env` antes de iniciar. Gere o JWT com `python -c "import secrets; print(secrets.token_hex(32))"`. Esses valores não devem entrar no Git. Veja [configuração local e migração](docs/02%20-%20Migracao%20para%20outro%20PC.md).
+
+O backend usa migrações Alembic. `start-local.cmd` aplica `alembic upgrade head` antes de iniciar. Em produção, use PostgreSQL e mantenha `DATABASE_AUTO_CREATE=false`.
+
+Para validar a credencial isoladamente, com o ambiente virtual ativo:
+
+```powershell
+$env:BARO_API_KEY="cole_sua_chave_aqui"
+python -c "import os; from openai import OpenAI; c=OpenAI(base_url='https://ia.maua.br/api/v1', api_key=os.environ['BARO_API_KEY']); print(c.chat.completions.create(model='google/gemma-3-27b', messages=[{'role':'user','content':'Olá, Barô!'}]).choices[0].message.content)"
+```
 
 Por padrão, crie sua conta na interface. Se habilitar `SEED_TEST_USERS=true`, configure também `SEED_TEST_PASSWORD` no `.env` local. As contas novas abaixo usarão essa senha; a interface não a preenche nem a revela:
 
@@ -91,6 +116,18 @@ Follow-ups podem omitir o contexto já estabelecido, por exemplo: `E julho?`, `C
 Pedidos de interpretação, como `O que você acha desses dados?` e `Me dê insights`, usam o Gemma com as evidências calculadas da sessão. Assim, o modelo conversa e interpreta, enquanto os números continuam vindo do DuckDB.
 
 Em desenvolvimento, o estado autenticado pode ser inspecionado em `GET /api/debug/session?conversation_id=<id>`. O endpoint não existe quando `APP_ENVIRONMENT=production`.
+
+## Backend PostgreSQL e deploy
+
+Os dados operacionais ficam nas tabelas PostgreSQL `users`, `conversations`, `conversation_messages`, `conversation_states` e `user_preferences`. O backend também fornece `GET /api/ready` para readiness do banco, endpoints de perfil/senha/conta, histórico de conversas e preferências autenticadas.
+
+Para subir PostgreSQL + backend com Docker:
+
+```powershell
+docker compose up --build
+```
+
+Para o deploy de teste com frontend na Vercel, backend no Render e PostgreSQL no Neon, siga [Deploy de teste: Neon + Render + Vercel](docs/DEPLOY_RENDER.md). O `render.yaml` cria somente o backend e solicita `DATABASE_URL`, `BARO_API_KEY` e `ALLOWED_ORIGINS` como valores privados no painel do Render.
 
 ## Avaliação e relatórios
 
@@ -123,8 +160,9 @@ Não use fine-tuning para memorizar dados operacionais. Métricas continuam send
 ## Validação executada
 
 ```text
-64 testes Python aprovados em 01/10/2026
-10/10 casos analíticos dourados aprovados
-ESLint aprovado
-Build Vite aprovado
+Conexão real com google/gemma-3-27b aprovada em 08/10/2026
+Streaming assíncrono da API Barô aprovado em 08/10/2026
+18 testes de backend aprovados; 2 bloqueados porque `data/database/semob.duckdb` não está presente nesta instalação
+Migração Alembic aprovada sobre banco existente e banco vazio
+ESLint e build de produção do frontend aprovados
 ```

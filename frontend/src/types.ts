@@ -1,6 +1,8 @@
 import type { ComponentType } from 'react'
 
 export type Role = 'user' | 'assistant'
+export type AssistantMode = 'cmob' | 'general'
+export type DefaultAssistant = 'last' | AssistantMode
 
 export type Usage = {
   prompt_tokens?: number
@@ -27,6 +29,7 @@ export type ChatMessage = {
 export type Conversation = {
   id: string
   title: string
+  assistantMode: AssistantMode
   messages: ChatMessage[]
   updatedAt: number
 }
@@ -50,6 +53,7 @@ export type UsageRecord = {
   id: string
   timestamp: number
   conversationId: string
+  assistantMode?: AssistantMode
   usage?: Usage
   durationMs: number
   ttftMs?: number
@@ -77,6 +81,7 @@ export type UserSettings = {
   language: 'pt-BR'
   dateFormat: 'DD/MM/YYYY' | 'YYYY-MM-DD'
   showTimestamps: boolean
+  defaultAssistant: DefaultAssistant
 }
 
 export type LocalProfile = {

@@ -77,6 +77,7 @@ export default function SettingsPage(props: Props) {
           </div>}
 
           {props.view === 'settings-chat' && <div className="settings-section">
+            <SettingRow title="Assistente padrão" description="Escolha qual ambiente abrir depois do login."><select value={props.settings.defaultAssistant} onChange={(event) => patchSettings({ defaultAssistant: event.target.value as UserSettings['defaultAssistant'] })}><option value="last">Último utilizado</option><option value="cmob">CMob AI</option><option value="general">Gemma Livre</option></select></SettingRow>
             <SettingRow title="Resposta em tempo real" description="Exibe a resposta enquanto ela é gerada."><Toggle checked={props.settings.streaming} onChange={(streaming) => patchSettings({ streaming })} label="Resposta em tempo real" /></SettingRow>
             <SettingRow title="Horário das mensagens" description="Mostra o horário ao lado do autor."><Toggle checked={props.settings.showTimestamps} onChange={(showTimestamps) => patchSettings({ showTimestamps })} label="Horário das mensagens" /></SettingRow>
             <SettingRow title="Idioma" description="Idioma usado pela interface."><select value={props.settings.language} disabled><option>Português (Brasil)</option></select></SettingRow>

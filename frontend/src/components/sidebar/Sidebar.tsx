@@ -7,17 +7,19 @@ import {
   LogOut,
   MessageSquareText,
   MoreHorizontal,
+  Network,
   Pencil,
   Plus,
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { AuthUser } from '../../AuthScreen'
-import type { AppView, Conversation, LocalProfile } from '../../types'
+import type { AppView, AssistantMode, Conversation, LocalProfile } from '../../types'
 import Brand from '../ui/Brand'
 import UserAvatar from '../ui/UserAvatar'
 
@@ -29,6 +31,7 @@ type Props = {
   profile: LocalProfile
   isAdmin: boolean
   mobileOpen: boolean
+  assistantMode: AssistantMode
   onCloseMobile: () => void
   onNavigate: (view: AppView) => void
   onNewChat: () => void
@@ -69,8 +72,10 @@ export default function Sidebar(props: Props) {
   const mainNav = [
     { id: 'chat' as const, label: 'Chat', icon: MessageSquareText },
     { id: 'history' as const, label: 'Histórico', icon: Clock3 },
-    { id: 'analyses' as const, label: 'Análises', icon: BarChart3 },
-    { id: 'memory' as const, label: 'Memória', icon: BrainCircuit },
+    ...(props.assistantMode === 'cmob' ? [
+      { id: 'analyses' as const, label: 'Análises', icon: BarChart3 },
+      { id: 'memory' as const, label: 'Memória', icon: BrainCircuit },
+    ] : []),
   ]
 
   function navigate(view: AppView) {
@@ -91,6 +96,10 @@ export default function Sidebar(props: Props) {
   return (
     <aside className={`sidebar-v2 ${props.mobileOpen ? 'is-open' : ''}`}>
       <div className="sidebar-brand-row"><Brand /><button className="icon-button mobile-only" onClick={props.onCloseMobile} aria-label="Fechar menu"><X size={18} /></button></div>
+      <div className={`sidebar-assistant-badge ${props.assistantMode}`}>
+        {props.assistantMode === 'cmob' ? <Network size={13} /> : <Sparkles size={13} />}
+        <span>{props.assistantMode === 'cmob' ? 'CMob' : 'Livre'}</span>
+      </div>
       <button className="primary-action" onClick={props.onNewChat}><Plus size={17} /> Novo chat</button>
 
       <nav className="sidebar-nav" aria-label="Navegação principal">

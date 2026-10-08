@@ -1,4 +1,6 @@
-# Usar o cMob AI em casa, na Mauá e na nuvem
+# Usar o cMob AI com a API Barô
+
+> Atualização: a integração atual usa `BARO_API_KEY` e não depende da antiga allowlist de IP. As orientações de liberação de IP abaixo são históricas e não devem ser aplicadas à API Barô. Para a configuração vigente, siga o README da raiz.
 
 Atualizado em 02/10/2026. [Índice](00%20-%20Indice%20Maua%20AI.md) | [Instalar em outro PC](02%20-%20Migracao%20para%20outro%20PC.md)
 
@@ -33,7 +35,7 @@ Segundo a mensagem do professor, a rede da Mauá está autorizada. Fora dela, pe
 | Backend em VM/VPS | IPv4 de saída da VM ou do NAT usado por ela | Segredos e URLs do ambiente de deploy |
 | Navegador em casa, backend na nuvem | Saída do backend na nuvem | O IP residencial do visitante não precisa ser liberado na IA |
 
-**Não existe uma lista de IPs de casa/escola a preencher no chatbot para autorizar a IA.** A lista de autorização fica na infraestrutura administrada pelo professor. Ele pode autorizar ambas as origens; a aplicação usa a mesma configuração nas duas redes. Não coloque seu IP residencial em `MAUA_AI_BASE_URL`.
+**A integração Barô atual não usa uma lista de IPs de casa/escola no chatbot.** Use sempre `BARO_BASE_URL=https://ia.maua.br/api/v1` e não coloque endereços residenciais nessa variável.
 
 ## Configuração local
 
@@ -47,15 +49,15 @@ notepad .env
 Configuração de integração: preencha a URL e a chave somente no `.env`, com os valores recebidos do responsável. A URL deve incluir o caminho da API, normalmente `/v1`:
 
 ```env
-MAUA_AI_BASE_URL=
-MAUA_AI_API_KEY=
-MAUA_AI_MODEL=google/gemma-3-27b
-MAUA_AI_SUPPORTS_THINKING=false
-MAUA_AI_TIMEOUT_SECONDS=120
+BARO_BASE_URL=https://ia.maua.br/api/v1
+BARO_API_KEY=
+BARO_MODEL=google/gemma-3-27b
+BARO_SUPPORTS_THINKING=false
+BARO_TIMEOUT_SECONDS=120
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
-Mantenha também as configurações de banco, JWT e dados analíticos da sua instalação. `ALLOWED_ORIGINS` controla as origens do frontend aceitas pelo backend; **não libera um IP na Mauá**. Preencha `MAUA_AI_API_KEY` somente no `.env` local com o valor fornecido pelo responsável. Nenhuma chave de acesso deve ser publicada, mesmo que usada apenas em testes.
+Mantenha também as configurações de banco, JWT e dados analíticos da sua instalação. `ALLOWED_ORIGINS` controla as origens do frontend aceitas pelo backend. Preencha `BARO_API_KEY` somente no `.env` local com sua chave pessoal. Nenhuma chave de acesso deve ser publicada, mesmo que usada apenas em testes.
 
 Em um clone novo, `JWT_SECRET` também precisa ser preenchido (mínimo 32 caracteres), e o exemplo usa SQLite local com `requirements-dev.txt`. As contas de teste ficam desativadas por padrão: crie sua conta na interface ou configure `SEED_TEST_PASSWORD` antes de habilitá-las. Veja a tabela completa no guia de migração. Levar o mesmo notebook preserva o `.env` e as contas existentes; um `git pull` não fornece esses segredos a outro PC.
 
@@ -88,9 +90,9 @@ Não publique IP residencial, `.env`, tokens ou senhas no repositório. Não é 
 Primeiro consulte os modelos, no mesmo ambiente de rede do backend. No PowerShell, na raiz do projeto com dependências instaladas, carregue a configuração sem exibir a chave:
 
 ```powershell
-$apiKey = & .\.venv\Scripts\python.exe -c "from backend.config import settings; print(settings.maua_ai_api_key)"
+$apiKey = & .\.venv\Scripts\python.exe -c "from backend.config import settings; print(settings.baro_api_key)"
 $baseUrl = & .\.venv\Scripts\python.exe -c "from backend.config import settings; print(settings.base_url)"
-if (-not $apiKey) { throw "Preencha MAUA_AI_API_KEY no .env local antes de testar." }
+if (-not $apiKey) { throw "Preencha BARO_API_KEY no .env local antes de testar." }
 Invoke-RestMethod -Uri "$baseUrl/models" -Headers @{ Authorization = "Bearer $apiKey" } -TimeoutSec 15
 ```
 

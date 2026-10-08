@@ -1,10 +1,9 @@
-"""API intermediária para o servidor OpenAI-compatible da Mauá."""
+"""API intermediária para a API OpenAI-compatible Barô da Mauá."""
 
 from __future__ import annotations
 
 import json
 import logging
-import sqlite3
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from dataclasses import asdict
@@ -12,21 +11,26 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import httpx
+from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend import database
+from backend.assistants import AssistantMode, AssistantRegistry, CMobAssistant, GeneralAssistant
 from backend.auth import get_current_user, hash_password, router as auth_router
 from backend.config import settings
+from backend.conversations import (
+    add_turn,
+    load_state,
+    recent_turns,
+    router as conversations_router,
+)
 from backend.models import User
 from semob_ai.analytics import AnalyticsExecutor, QueryPlan
 from semob_ai.conversation.service import ConversationEngine
-from semob_ai.conversation.store import SessionStore
-from semob_ai.memory import MemoryStore
-from semob_ai.guardrails.scope import is_conversational_message
-from semob_ai.rag import LocalRagIndex
 
 
 class Message(BaseModel):
@@ -40,6 +44,7 @@ class ChatRequest(BaseModel):
     max_tokens: int = Field(default=1200, ge=64, le=8192)
     thinking: bool = False
     conversation_id: str = Field(default="default", min_length=1, max_length=100)
+    assistant: AssistantMode = AssistantMode.CMOB
 
     @field_validator("messages")
     @classmethod
@@ -50,9 +55,19 @@ class ChatRequest(BaseModel):
 
 
 logger = logging.getLogger("uvicorn.error")
-SYSTEM_PROMPT_FILE = Path(__file__).resolve().parent.parent / "prompts" / "system.md"
-SYSTEM_PROMPT = SYSTEM_PROMPT_FILE.read_text(encoding="utf-8")
-conversation_engine = ConversationEngine(settings.semob_database_file, settings.semob_session_file, logger)
+PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+SYSTEM_PROMPTS = {
+    AssistantMode.CMOB: (PROMPTS_DIR / "cmob_system.md").read_text(encoding="utf-8"),
+    AssistantMode.GENERAL: (PROMPTS_DIR / "general_system.md").read_text(encoding="utf-8"),
+}
+conversation_engine = ConversationEngine(settings.semob_database_file, None, logger)
+
+
+def get_assistant_registry() -> AssistantRegistry:
+    return AssistantRegistry(
+        CMobAssistant(conversation_engine, settings.semob_rag_file),
+        GeneralAssistant(),
+    )
 
 
 @asynccontextmanager
@@ -75,20 +90,14 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 app.include_router(auth_router)
-
-
-def auth_headers() -> dict[str, str]:
-    return {
-        "Authorization": f"Bearer {settings.maua_ai_api_key}",
-        "Content-Type": "application/json",
-    }
+app.include_router(conversations_router)
 
 
 def configuration_error() -> JSONResponse:
     return JSONResponse(
         status_code=503,
         content={
-            "detail": "Servidor da Mauá ainda não configurado. Defina MAUA_AI_BASE_URL no arquivo .env."
+            "detail": "API Barô ainda não configurada. Defina BARO_API_KEY no arquivo .env."
         },
     )
 
@@ -99,10 +108,23 @@ async def health() -> dict[str, Any]:
         "status": "ok",
         "configured": settings.configured,
         "database_ready": database.database_ready,
-        "model": settings.maua_ai_model,
-        "supports_thinking": settings.maua_ai_supports_thinking,
+        "model": settings.baro_model,
+        "supports_thinking": settings.baro_supports_thinking,
         "analytics_ready": settings.semob_database_file.is_file(),
     }
+
+
+@app.get("/api/ready")
+async def readiness() -> JSONResponse:
+    ready = await database.check_database()
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={
+            "status": "ready" if ready else "not_ready",
+            "database_ready": ready,
+            "ai_configured": settings.configured,
+        },
+    )
 
 
 @app.get("/api/models", response_model=None)
@@ -111,24 +133,30 @@ async def models(_current_user: Annotated[User, Depends(get_current_user)]) -> J
         return configuration_error()
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(f"{settings.base_url}/models", headers=auth_headers())
-            response.raise_for_status()
-            return response.json()
-    except httpx.HTTPError as exc:
+        async with AsyncOpenAI(
+            base_url=settings.base_url,
+            api_key=settings.baro_api_key,
+            timeout=15.0,
+        ) as client:
+            response = await client.models.list()
+            return {
+                "object": "list",
+                "data": [model.model_dump(mode="json") for model in response.data],
+            }
+    except (APIConnectionError, APIStatusError, APITimeoutError) as exc:
         return JSONResponse(
             status_code=502,
-            content={"detail": f"Não foi possível consultar os modelos da Mauá: {friendly_error(exc)}"},
+            content={"detail": f"Não foi possível consultar os modelos da Barô: {friendly_error(exc)}"},
         )
 
 
 def friendly_error(exc: Exception) -> str:
-    if isinstance(exc, httpx.TimeoutException):
+    if isinstance(exc, APITimeoutError):
         return "o servidor demorou mais que o limite configurado para responder"
-    if isinstance(exc, httpx.HTTPStatusError):
-        return f"o servidor respondeu com HTTP {exc.response.status_code}"
-    if isinstance(exc, httpx.ConnectError):
-        return "não foi possível conectar ao servidor; confira a URL e a rede da Mauá"
+    if isinstance(exc, APIStatusError):
+        return f"o servidor respondeu com HTTP {exc.status_code}"
+    if isinstance(exc, APIConnectionError):
+        return "não foi possível conectar à API Barô; confira a conexão e a URL configurada"
     return str(exc)
 
 
@@ -137,7 +165,7 @@ def ndjson(event: dict[str, Any]) -> str:
 
 
 def completion_payload(request: ChatRequest, rag_context: str = "") -> dict[str, Any]:
-    controlled_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    controlled_messages = [{"role": "system", "content": SYSTEM_PROMPTS[request.assistant]}]
     if rag_context:
         controlled_messages[0]["content"] += "\n\nCONTEXTO PARA A MENSAGEM ATUAL:\n" + rag_context
     controlled_messages.extend(
@@ -146,15 +174,14 @@ def completion_payload(request: ChatRequest, rag_context: str = "") -> dict[str,
         if message.role in {"user", "assistant"}
     )
     payload: dict[str, Any] = {
-        "model": settings.maua_ai_model,
+        "model": settings.baro_model,
         "messages": controlled_messages,
         "temperature": min(request.temperature, 0.3),
         "max_tokens": request.max_tokens,
         "stream": True,
-        "stream_options": {"include_usage": True},
     }
-    if settings.maua_ai_supports_thinking:
-        payload["chat_template_kwargs"] = {"enable_thinking": request.thinking}
+    if settings.baro_supports_thinking:
+        payload["extra_body"] = {"chat_template_kwargs": {"enable_thinking": request.thinking}}
     return payload
 
 
@@ -162,51 +189,33 @@ async def stream_completion(request: ChatRequest, rag_context: str = "") -> Asyn
     payload = completion_payload(request, rag_context)
     timeout = httpx.Timeout(
         connect=10.0,
-        read=settings.maua_ai_timeout_seconds,
+        read=settings.baro_timeout_seconds,
         write=30.0,
         pool=10.0,
     )
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            async with client.stream(
-                "POST",
-                f"{settings.base_url}/chat/completions",
-                headers=auth_headers(),
-                json=payload,
-            ) as response:
-                if response.is_error:
-                    body = (await response.aread()).decode(errors="replace")
-                    detail = body[:500] or response.reason_phrase
-                    yield ndjson({"type": "error", "message": f"HTTP {response.status_code}: {detail}"})
-                    return
+        async with AsyncOpenAI(
+            base_url=settings.base_url,
+            api_key=settings.baro_api_key,
+            timeout=timeout,
+        ) as client:
+            stream = await client.chat.completions.create(**payload)
+            async for chunk in stream:
+                if chunk.choices:
+                    delta = chunk.choices[0].delta
+                    if delta.content:
+                        yield ndjson({"type": "delta", "content": delta.content})
+                    reasoning = getattr(delta, "reasoning_content", None)
+                    if reasoning and request.thinking:
+                        yield ndjson({"type": "reasoning", "content": reasoning})
 
-                async for line in response.aiter_lines():
-                    if not line.startswith("data:"):
-                        continue
-                    data = line[5:].strip()
-                    if not data or data == "[DONE]":
-                        continue
-                    try:
-                        chunk = json.loads(data)
-                    except json.JSONDecodeError:
-                        continue
+                usage = getattr(chunk, "usage", None)
+                if usage:
+                    yield ndjson({"type": "usage", "usage": usage.model_dump(mode="json")})
 
-                    choices = chunk.get("choices") or []
-                    if choices:
-                        delta = choices[0].get("delta") or {}
-                        content = delta.get("content")
-                        reasoning = delta.get("reasoning_content")
-                        if content:
-                            yield ndjson({"type": "delta", "content": content})
-                        if reasoning and request.thinking:
-                            yield ndjson({"type": "reasoning", "content": reasoning})
-
-                    if chunk.get("usage"):
-                        yield ndjson({"type": "usage", "usage": chunk["usage"]})
-
-                yield ndjson({"type": "done"})
-    except (httpx.HTTPError, OSError) as exc:
+            yield ndjson({"type": "done"})
+    except (APIConnectionError, APIStatusError, APITimeoutError, OSError) as exc:
         yield ndjson({"type": "error", "message": friendly_error(exc)})
 
 
@@ -215,25 +224,38 @@ async def stream_local_answer(answer: str) -> AsyncIterator[str]:
     yield ndjson({"type": "done"})
 
 
-def remember(user_id: str, conversation_id: str, role: str, content: str) -> None:
+async def remember(
+    user_id: str,
+    conversation_id: str,
+    role: str,
+    content: str,
+    assistant: AssistantMode = AssistantMode.CMOB,
+) -> None:
     try:
-        MemoryStore(settings.semob_memory_file, settings.semob_memory_retention_days).add_turn(
-            user_id, conversation_id, role, content
+        await add_turn(
+            user_id,
+            conversation_id,
+            role,
+            content,
+            assistant_mode=assistant.value,
         )
-    except (OSError, ValueError, sqlite3.Error):
-        logger.exception("Não foi possível registrar a memória local.")
+    except (OSError, ValueError, SQLAlchemyError):
+        logger.exception("Não foi possível registrar a memória no banco.")
 
 
-def recover_history(request: ChatRequest, user_id: str) -> ChatRequest:
+async def recover_history(request: ChatRequest, user_id: str) -> ChatRequest:
     messages = [message for message in request.messages if message.role in {"user", "assistant"}]
     if len(messages) == 1:
         try:
-            turns = MemoryStore(settings.semob_memory_file, settings.semob_memory_retention_days).recent(
-                user_id, request.conversation_id, limit=29,
+            turns = await recent_turns(
+                user_id,
+                request.conversation_id,
+                limit=29,
+                assistant_mode=request.assistant.value,
             )
             messages = [Message(role=turn.role, content=turn.content) for turn in turns] + messages
-        except (OSError, ValueError, sqlite3.Error):
-            logger.exception("Não foi possível recuperar a memória local.")
+        except (OSError, ValueError, SQLAlchemyError):
+            logger.exception("Não foi possível recuperar a memória do banco.")
     return request.model_copy(update={"messages": messages})
 
 
@@ -253,12 +275,12 @@ async def stream_and_remember(
             elif event_type == "done":
                 continue
             elif event_type == "error":
-                logger.warning("maua_completion_error: %s", payload.get("message"))
+                logger.warning("baro_completion_error: %s", payload.get("message"))
                 if fallback_answer and not answer_parts:
                     fallback_answer = "Não consegui obter a interpretação do modelo agora. Seguem os resultados calculados localmente:\n\n" + fallback_answer
                     yield ndjson({"type": "delta", "content": fallback_answer})
                     yield ndjson({"type": "done"})
-                    remember(user_id, request.conversation_id, "assistant", fallback_answer)
+                    await remember(user_id, request.conversation_id, "assistant", fallback_answer, request.assistant)
                     return
                 yield event
                 return
@@ -267,11 +289,11 @@ async def stream_and_remember(
         yield event
     answer = "".join(answer_parts).strip()
     if not answer and fallback_answer:
-        logger.warning("maua_completion_empty: using local calculations")
+        logger.warning("baro_completion_empty: using local calculations")
         answer = "O modelo não retornou texto. Seguem os resultados calculados localmente:\n\n" + fallback_answer
         yield ndjson({"type": "delta", "content": answer})
     if answer:
-        remember(user_id, request.conversation_id, "assistant", answer)
+        await remember(user_id, request.conversation_id, "assistant", answer, request.assistant)
     yield ndjson({"type": "done"})
 
 
@@ -289,15 +311,17 @@ async def semob_query(
 async def debug_session(
     current_user: Annotated[User, Depends(get_current_user)],
     conversation_id: str = Query(min_length=1, max_length=100),
+    assistant: AssistantMode = Query(default=AssistantMode.CMOB),
 ) -> dict[str, Any]:
     if not settings.development:
         raise HTTPException(status_code=404, detail="Not found")
     user_id = str(current_user.id)
-    state = SessionStore(settings.semob_session_file).load(user_id, conversation_id)
-    recent = MemoryStore(settings.semob_memory_file, settings.semob_memory_retention_days).recent(
-        user_id, conversation_id, limit=12
+    state = await load_state(user_id, conversation_id, assistant.value)
+    recent = await recent_turns(
+        user_id, conversation_id, limit=12, assistant_mode=assistant.value
     )
     return {
+        "assistant": assistant.value,
         **state.model_dump(mode="json"),
         "memory_items_recovered": [asdict(item) for item in recent],
     }
@@ -310,17 +334,20 @@ async def chat(
 ) -> StreamingResponse | JSONResponse:
     question = request.messages[-1].content
     user_id = str(current_user.id)
-    request = recover_history(request, user_id)
-    remember(user_id, request.conversation_id, "user", question)
+    request = await recover_history(request, user_id)
+    await remember(user_id, request.conversation_id, "user", question, request.assistant)
     try:
-        conversation = conversation_engine.handle(
-            user_id, request.conversation_id, question,
+        prepared = await get_assistant_registry().get(request.assistant).prepare(
+            user_id,
+            request.conversation_id,
+            question,
             history=[message.model_dump() for message in request.messages[:-1]],
         )
     except FileNotFoundError as exc:
         return JSONResponse(status_code=503, content={"detail": str(exc)})
 
-    if settings.development:
+    conversation = prepared.conversation
+    if settings.development and conversation is not None:
         logger.info(
             "conversation_resolution %s",
             json.dumps(
@@ -333,35 +360,31 @@ async def chat(
                     "modified_context": conversation.resolution.modified_context,
                     "final_query_plan": conversation.resolution.plan.model_dump(mode="json") if conversation.resolution.plan else None,
                     "session_id": request.conversation_id,
+                    "assistant": request.assistant.value,
                 },
                 ensure_ascii=False,
                 default=str,
             ),
         )
 
-    if conversation.kind in {"out_of_scope", "clarification"}:
-        answer = conversation.answer or "Não foi possível concluir a análise."
-        remember(user_id, request.conversation_id, "assistant", answer)
+    if prepared.local_only:
+        answer = prepared.answer or "Não foi possível concluir a análise."
+        await remember(user_id, request.conversation_id, "assistant", answer, request.assistant)
         return StreamingResponse(stream_local_answer(answer), media_type="application/x-ndjson")
 
-    if conversation.kind == "analytics" and not settings.configured:
-        answer = conversation.answer or "Não foi possível concluir a análise."
-        remember(user_id, request.conversation_id, "assistant", answer)
+    if prepared.kind == "analytics" and not settings.configured:
+        answer = prepared.answer or "Não foi possível concluir a análise."
+        await remember(user_id, request.conversation_id, "assistant", answer, request.assistant)
         return StreamingResponse(stream_local_answer(answer), media_type="application/x-ndjson")
 
     if not settings.configured:
         return configuration_error()
-    rag_query = conversation.resolution.resolved_question if conversation.resolution.is_follow_up else question
-    social = is_conversational_message(question)
-    chunks = [] if social or conversation.kind == "analytics" else LocalRagIndex(settings.semob_rag_file).search(rag_query, limit=4)
-    context_parts = [conversation.llm_context] if conversation.llm_context else []
-    if social:
-        context_parts.append("A mensagem atual é uma interação social, não uma consulta de dados. Responda brevemente sem repetir resultados anteriores.")
-    context_parts.extend(
-        f"[{chunk.source}#trecho-{chunk.chunk_index}] {chunk.text}" for chunk in chunks
-    )
-    rag_context = "\n\n".join(context_parts)
     return StreamingResponse(
-        stream_and_remember(request, rag_context, user_id, fallback_answer=conversation.answer),
+        stream_and_remember(
+            request,
+            prepared.llm_context,
+            user_id,
+            fallback_answer=prepared.answer,
+        ),
         media_type="application/x-ndjson",
     )

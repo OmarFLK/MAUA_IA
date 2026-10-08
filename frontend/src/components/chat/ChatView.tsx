@@ -4,12 +4,15 @@ import remarkGfm from 'remark-gfm'
 import {
   AlertTriangle,
   BarChart3,
+  BookOpen,
   BusFront,
   Check,
   Clipboard,
+  Code2,
   Menu,
   RotateCcw,
   Send,
+  Sparkles,
   Square,
   ThumbsDown,
   ThumbsUp,
@@ -18,7 +21,7 @@ import {
   Waypoints,
 } from 'lucide-react'
 import type { AuthUser } from '../../AuthScreen'
-import type { AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UserSettings } from '../../types'
+import type { AssistantMode, AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UserSettings } from '../../types'
 import ModelStatus from '../ai/ModelStatus'
 import UserAvatar from '../ui/UserAvatar'
 
@@ -34,6 +37,7 @@ type Props = {
   settings: UserSettings
   isStreaming: boolean
   copiedId: string | null
+  assistantMode: AssistantMode
   onOpenMenu: () => void
   onInput: (value: string) => void
   onSend: (content?: string) => void
@@ -42,13 +46,21 @@ type Props = {
   onRegenerate: (messageId: string) => void
   onFeedback: (messageId: string, feedback: MessageFeedback) => void
   onClear: () => void
+  onAssistantChange: (mode: AssistantMode) => void
 }
 
-const suggestions = [
+const cmobSuggestions = [
   { icon: UsersRound, label: 'Passageiros em agosto', prompt: 'Quantos passageiros pagantes e não pagantes tivemos em agosto?' },
   { icon: BarChart3, label: 'Comparar períodos', prompt: 'Compare as viagens realizadas em julho e agosto e destaque as principais variações.' },
   { icon: BusFront, label: 'Ranking de linhas', prompt: 'Quais linhas apresentaram mais viagens no período disponível?' },
   { icon: Waypoints, label: 'Cumprimento operacional', prompt: 'Analise o cumprimento das viagens e me dê os principais insights.' },
+]
+
+const generalSuggestions = [
+  { icon: Code2, label: 'Programação', prompt: 'Me ensine decorators em Python com exemplos práticos.' },
+  { icon: BookOpen, label: 'Estudos', prompt: 'Explique redes neurais de forma simples e progressiva.' },
+  { icon: Sparkles, label: 'Ideias', prompt: 'Ajude-me a organizar ideias para um novo projeto.' },
+  { icon: Waypoints, label: 'APIs', prompt: 'Como funciona uma API REST? Mostre um exemplo.' },
 ]
 
 function formatTime(timestamp: number) {
@@ -58,7 +70,9 @@ function formatTime(timestamp: number) {
 export default function ChatView(props: Props) {
   const endRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const ready = Boolean(props.health?.configured || props.health?.analytics_ready)
+  const isCMob = props.assistantMode === 'cmob'
+  const ready = Boolean(props.health?.configured || (isCMob && props.health?.analytics_ready))
+  const suggestions = isCMob ? cmobSuggestions : generalSuggestions
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: props.isStreaming ? 'auto' : 'smooth' })
@@ -80,20 +94,20 @@ export default function ChatView(props: Props) {
     <main className="workspace chat-workspace">
       <header className="workspace-header chat-header">
         <button className="icon-button mobile-menu" onClick={props.onOpenMenu} aria-label="Abrir menu"><Menu size={20} /></button>
-        <div className="header-title"><strong>{props.conversation.title}</strong><span>SEMOB · Assistente de mobilidade urbana</span></div>
+        <div className="header-title"><strong>{props.conversation.title}</strong><span>{isCMob ? 'CMob AI · Assistente de mobilidade urbana' : 'Gemma Livre · Assistente de propósito geral'}</span></div>
         <div className="header-actions">
           {props.conversation.messages.length > 0 && <button className="icon-button" onClick={props.onClear} aria-label="Limpar conversa" title="Limpar conversa"><Trash2 size={17} /></button>}
-          <ModelStatus health={props.health} models={props.models} connectionError={props.connectionError} />
+          <ModelStatus health={props.health} models={props.models} connectionError={props.connectionError} assistantMode={props.assistantMode} onAssistantChange={props.onAssistantChange} />
         </div>
       </header>
 
       <section className={`chat-scroll ${props.conversation.messages.length === 0 ? 'is-empty' : ''}`}>
         {props.conversation.messages.length === 0 ? (
           <div className="chat-welcome">
-            <div className="welcome-mark"><Waypoints size={25} /></div>
-            <p className="section-kicker">SEMOB · cMob AI</p>
-            <h1>Como posso ajudar na sua análise?</h1>
-            <p>Converse com os dados de transporte e aprofunde comparações, tendências e indicadores operacionais.</p>
+            <div className={`welcome-mark ${isCMob ? '' : 'general'}`}>{isCMob ? <Waypoints size={25} /> : <Sparkles size={25} />}</div>
+            <p className="section-kicker">{isCMob ? 'SEMOB · CMob AI' : 'GEMMA 3 27B · MODO LIVRE'}</p>
+            <h1>{isCMob ? 'Como posso ajudar na sua análise?' : 'Como posso ajudar hoje?'}</h1>
+            <p>{isCMob ? 'Converse com os dados de transporte e aprofunde comparações, tendências e indicadores operacionais.' : 'Programação, escrita, explicações, estudos e conversas de propósito geral, sem o contexto especializado do CMob.'}</p>
             {(!ready || props.connectionError) && (
               <div className="inline-alert" role="status">
                 <AlertTriangle size={18} />
@@ -155,13 +169,13 @@ export default function ChatView(props: Props) {
             onChange={(event) => { props.onInput(event.target.value); resize() }}
             onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submit() } }}
             rows={1}
-            placeholder={ready ? 'Pergunte à cMob AI' : 'Aguardando conexão com a IA'}
+            placeholder={ready ? (isCMob ? 'Pergunte à CMob AI' : 'Pergunte ao Gemma') : 'Aguardando conexão com a IA'}
             disabled={!ready || props.isStreaming}
             aria-label="Mensagem para a cMob AI"
           />
           {props.isStreaming ? <button className="composer-submit stop" onClick={props.onStop} aria-label="Interromper resposta"><Square size={14} fill="currentColor" /></button> : <button className="composer-submit" onClick={submit} disabled={!props.input.trim() || !ready} aria-label="Enviar mensagem"><Send size={17} /></button>}
         </div>
-        <p>A cMob AI da SEMOB pode cometer erros. Valide decisões críticas com a fonte dos dados.</p>
+        <p>{isCMob ? 'A CMob AI pode cometer erros. Valide decisões críticas com a fonte dos dados.' : 'O Gemma pode cometer erros. Verifique informações importantes.'}</p>
       </footer>
     </main>
   )

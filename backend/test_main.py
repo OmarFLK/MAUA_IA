@@ -7,13 +7,15 @@ from fastapi.testclient import TestClient
 
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["DATABASE_AUTO_CREATE"] = "true"
 os.environ["JWT_SECRET"] = secrets.token_hex(32)
 TEST_PASSWORD = secrets.token_urlsafe(24)
 os.environ["SEED_TEST_PASSWORD"] = TEST_PASSWORD
 os.environ["SEED_TEST_USERS"] = "true"
-os.environ["MAUA_AI_BASE_URL"] = ""
+os.environ["BARO_API_KEY"] = ""
 
 from backend.main import ChatRequest, Message, app, completion_payload  # noqa: E402
+from backend.config import Settings  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -37,8 +39,26 @@ def test_health_exposes_safe_configuration_only(client: TestClient):
     assert response.json()["status"] == "ok"
     assert response.json()["database_ready"] is True
     assert response.json()["supports_thinking"] is False
-    assert "maua_ai_api_key" not in response.json()
+    assert "baro_api_key" not in response.json()
     assert "jwt_secret" not in response.json()
+
+    readiness = client.get("/api/ready")
+    assert readiness.status_code == 200
+    assert readiness.json()["database_ready"] is True
+
+
+def test_render_postgres_url_is_normalized_for_asyncpg():
+    config = Settings(
+        _env_file=None,
+        database_url=(
+            "postgresql://user:pass@db.internal/app"
+            "?sslmode=require&channel_binding=require"
+        ),
+        jwt_secret=secrets.token_hex(32),
+    )
+    assert config.sqlalchemy_database_url == (
+        "postgresql+asyncpg://user:pass@db.internal/app?ssl=require"
+    )
 
 
 def test_gemma_payload_omits_qwen_thinking_parameter():
@@ -69,6 +89,20 @@ def test_client_system_prompt_is_ignored():
     assert payload["messages"][1] == {"role": "user", "content": "Quantas viagens ocorreram?"}
 
 
+def test_general_assistant_uses_its_own_prompt_without_cmob_context():
+    request = ChatRequest(
+        assistant="general",
+        messages=[Message(role="user", content="Me explique orientação a objetos.")],
+    )
+
+    payload = completion_payload(request, rag_context="")
+
+    prompt = payload["messages"][0]["content"]
+    assert "propósito geral" in prompt
+    assert "SEMOB" not in prompt
+    assert "DuckDB" not in prompt
+
+
 @pytest.mark.parametrize(
     "email",
     ["ana@teste.maua.ai", "bruno@teste.maua.ai", "carla@teste.maua.ai"],
@@ -97,6 +131,15 @@ def test_registration_login_and_profile(client: TestClient):
     )
     assert duplicate.status_code == 409
 
+    updated = client.patch(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"name": "Diego Atualizado"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["name"] == "Diego Atualizado"
+    assert updated.json()["role"] == "user"
+
 
 def test_wrong_password_is_rejected(client: TestClient):
     response = client.post(
@@ -104,6 +147,38 @@ def test_wrong_password_is_rejected(client: TestClient):
         json={"email": "ana@teste.maua.ai", "password": secrets.token_urlsafe(24)},
     )
     assert response.status_code == 401
+
+
+def test_conversation_crud_and_preferences_are_user_scoped(client: TestClient):
+    headers = login_headers(client)
+    created = client.post(
+        "/api/conversations",
+        headers=headers,
+        json={"id": "crud-conversation", "title": "Teste PostgreSQL", "assistant_mode": "general"},
+    )
+    assert created.status_code == 201
+    assert created.json()["assistant_mode"] == "general"
+
+    renamed = client.patch(
+        "/api/conversations/crud-conversation",
+        headers=headers,
+        json={"title": "Título atualizado"},
+    )
+    assert renamed.status_code == 200
+    assert renamed.json()["title"] == "Título atualizado"
+
+    preferences = client.put(
+        "/api/preferences",
+        headers=headers,
+        json={"values": {"theme": "dark", "default_assistant": "general"}},
+    )
+    assert preferences.status_code == 200
+    loaded = client.get("/api/preferences", headers=headers)
+    assert loaded.json()["theme"] == "dark"
+
+    deleted = client.delete("/api/conversations/crud-conversation", headers=headers)
+    assert deleted.status_code == 204
+    assert client.get("/api/conversations/crud-conversation", headers=headers).status_code == 404
 
 
 def test_chat_requires_authentication(client: TestClient):
@@ -127,7 +202,7 @@ def test_unconfigured_ai_server_has_clear_error(client: TestClient):
         json={"messages": [{"role": "user", "content": "Olá"}]},
     )
     assert response.status_code == 503
-    assert "MAUA_AI_BASE_URL" in response.json()["detail"]
+    assert "BARO_API_KEY" in response.json()["detail"]
 
 
 def test_development_session_debug_exposes_structured_state(client: TestClient):
@@ -162,8 +237,7 @@ def test_chat_recovers_history_and_executes_confirmed_offer(client, monkeypatch,
     from backend import main
     from semob_ai.conversation.service import ConversationEngine
 
-    monkeypatch.setattr(main.settings, "semob_memory_path", str(tmp_path / "memory.sqlite"))
-    monkeypatch.setattr(main.settings, "maua_ai_base_url", "http://model.test/v1")
+    monkeypatch.setattr(main.settings, "baro_api_key", "test-key")
     engine = ConversationEngine(main.settings.semob_database_file, tmp_path / "sessions.sqlite")
     monkeypatch.setattr(main, "conversation_engine", engine)
     captured = []
@@ -204,22 +278,66 @@ def test_chat_recovers_history_and_executes_confirmed_offer(client, monkeypatch,
 
 
 def test_recovered_memory_is_scoped_to_user_and_session(monkeypatch, tmp_path):
-    from backend import main
     from semob_ai.memory import MemoryStore
 
     path = tmp_path / "memory.sqlite"
-    monkeypatch.setattr(main.settings, "semob_memory_path", str(path))
-    MemoryStore(path).add_turn("owner", "shared-name", "assistant", "Private history")
-    request = ChatRequest(conversation_id="shared-name", messages=[Message(role="user", content="Olá")])
-    assert len(main.recover_history(request, "owner").messages) == 2
-    assert len(main.recover_history(request, "someone-else").messages) == 1
+    memory = MemoryStore(path)
+    memory.add_turn("owner", "shared-name", "assistant", "Private history")
+    assert len(memory.recent("owner", "shared-name")) == 1
+    assert len(memory.recent("someone-else", "shared-name")) == 0
+
+
+def test_recovered_memory_is_scoped_to_assistant(monkeypatch, tmp_path):
+    from semob_ai.memory import MemoryStore
+
+    path = tmp_path / "memory.sqlite"
+    memory = MemoryStore(path)
+    memory.add_turn("owner", "shared-name", "assistant", "CMob history", assistant_mode="cmob")
+    memory.add_turn("owner", "shared-name", "assistant", "General history", assistant_mode="general")
+
+    assert [item.content for item in memory.recent("owner", "shared-name", assistant_mode="cmob")] == ["CMob history"]
+    assert [item.content for item in memory.recent("owner", "shared-name", assistant_mode="general")] == ["General history"]
+
+
+def test_general_chat_bypasses_cmob_pipeline(client, monkeypatch, tmp_path):
+    from backend import main
+
+    monkeypatch.setattr(main.settings, "baro_api_key", "test-key")
+    captured = []
+
+    async def fake_completion(request, context=""):
+        captured.append((request, context))
+        yield main.ndjson({"type": "delta", "content": "Orientação a objetos organiza código em objetos."})
+        yield main.ndjson({"type": "done"})
+
+    monkeypatch.setattr(main, "stream_completion", fake_completion)
+    response = client.post(
+        "/api/chat",
+        headers=login_headers(client),
+        json={
+            "assistant": "general",
+            "conversation_id": "general-api",
+            "messages": [{"role": "user", "content": "Me explique orientação a objetos."}],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Orientação a objetos" in response.text
+    assert captured[0][0].assistant.value == "general"
+    assert captured[0][1] == ""
+
+    conversations = client.get("/api/conversations", headers=login_headers(client))
+    assert conversations.status_code == 200
+    assert any(item["id"] == "general-api" for item in conversations.json())
+
+    detail = client.get("/api/conversations/general-api", headers=login_headers(client))
+    assert detail.status_code == 200
+    assert [message["role"] for message in detail.json()["messages"]] == ["user", "assistant"]
 
 
 @pytest.mark.anyio
 async def test_remote_failure_is_not_disguised_as_model_answer(monkeypatch, tmp_path):
     from backend import main
-
-    monkeypatch.setattr(main.settings, "semob_memory_path", str(tmp_path / "memory.sqlite"))
 
     async def failed_completion(request, context=""):
         yield main.ndjson({"type": "error", "message": "HTTP 503"})

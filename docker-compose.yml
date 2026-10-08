@@ -17,6 +17,33 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: maua-ai-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://maua:${POSTGRES_PASSWORD}@postgres:5432/maua_ai
+      DATABASE_AUTO_CREATE: "false"
+      BARO_API_KEY: ${BARO_API_KEY}
+      BARO_BASE_URL: ${BARO_BASE_URL:-https://ia.maua.br/api/v1}
+      BARO_MODEL: ${BARO_MODEL:-google/gemma-3-27b}
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      APP_ENVIRONMENT: production
+      SEED_TEST_USERS: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   maua_postgres_data:
 

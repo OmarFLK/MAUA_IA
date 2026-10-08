@@ -20,17 +20,27 @@ SCOPE_REFUSAL = (
 
 
 class ConversationEngine:
-    def __init__(self, analytics_database: Path, session_database: Path, logger: logging.Logger | None = None):
+    def __init__(
+        self,
+        analytics_database: Path,
+        session_database: Path | None,
+        logger: logging.Logger | None = None,
+    ):
         self.executor = AnalyticsExecutor(analytics_database)
-        self.sessions = SessionStore(session_database)
+        self.sessions = SessionStore(session_database) if session_database else None
         self.resolver = FollowUpResolver()
         self.logger = logger or logging.getLogger(__name__)
 
     def handle(
         self, user_id: str, session_id: str, message: str,
         history: list[dict[str, str]] | None = None,
+        state: ConversationState | None = None,
     ) -> ConversationResponse:
-        state = self.sessions.load(user_id, session_id)
+        state_is_external = state is not None
+        if state is None:
+            if not self.sessions:
+                raise RuntimeError("O armazenamento de estado não foi configurado.")
+            state = self.sessions.load(user_id, session_id, assistant_mode="cmob")
         resolution = self.resolver.resolve(message, state, history)
         scope = check_scope(
             message,
@@ -73,7 +83,8 @@ class ConversationEngine:
             answer += "\n\n" + format_projection(resolution.plan, primary)
 
         self._update_state(state, resolution, asdict(primary), asdict(comparison) if comparison else None, answer)
-        self.sessions.save(state)
+        if self.sessions and not state_is_external:
+            self.sessions.save(state, assistant_mode="cmob")
         return ConversationResponse(
             kind="analytics",
             answer=answer,
