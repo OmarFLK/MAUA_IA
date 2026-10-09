@@ -14,7 +14,7 @@ class ScopeDecision:
 TRANSPORT_TERMS = {
     "semob", "transporte", "onibus", "linha", "viag", "veiculo", "passageiro", "pagante", "catraca",
     "quilometr", "km", "itinerario", "mobilidade", "saldo", "credito", "tarifa", "motorista",
-    "horario", "operacao", "frota", "partida", "terminal",
+    "horario", "operacao", "frota", "partida", "terminal", "venda", "faturamento", "utilizacao", "cumprimento", "excecao", "excecoes", "bilhetagem",
 }
 DATA_WORK_TERMS = {
     "dados", "indicador", "metrica", "estatistic", "relatorio", "dashboard", "serie historica",
@@ -25,7 +25,7 @@ PERIOD_TERMS = {
     "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 }
 OUT_OF_SCOPE_TERMS = {
-    "codigo python", "programar", "receita", "futebol", "filme", "medicina", "advogado", "bitcoin",
+    "codigo python", "programar", "receita culinaria", "receita de bolo", "futebol", "filme", "medicina", "advogado", "bitcoin",
     "youtube", "politica", "eleicao", "presidente", "baixar videos", "faca um site", "site em react",
 }
 INJECTION_TERMS = {"ignore as instrucoes", "ignore as regras", "ignore as regras anteriores", "prompt do sistema", "system prompt", "jailbreak", "finja que nao", "esquece tudo"}

@@ -198,6 +198,6 @@ class ConversationEngine:
             + "\n\nInterprete essas evidências de forma natural. Destaque padrões, proporções e limitações úteis. "
               "Não invente números, não repita mecanicamente a última resposta e não atribua causalidade sem evidência. "
               "A categoria 'não pagantes' tem causa e composição desconhecidas nos dados; não proponha explicações para ela. "
-              "A cobertura geral da tabela não torna uma consulta parcial quando todo o período solicitado está contido nela. "
+              "Verifique os dias com registros no recorte: estar entre a primeira e a ultima data da tabela nao garante que nao existam lacunas. "
               "Se houver apenas um período, não afirme tendência, aumento ou queda: recomende uma comparação temporal."
         )

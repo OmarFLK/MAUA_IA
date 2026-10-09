@@ -76,16 +76,22 @@ def run_ingestion(raw_root: Path, output_root: Path) -> IngestionResult:
     metadata_dir.mkdir(parents=True, exist_ok=True)
 
     html_files = sorted(raw_root.rglob("*.html"))
+    if not html_files:
+        raise ValueError("No HTML reports found; refusing to create an empty database.")
     ingested_at = datetime.now(timezone.utc).isoformat()
     grouped: dict[str, list[dict[str, object]]] = defaultdict(list)
     reports: list[ParsedReport] = []
     sources: list[dict[str, object]] = []
     for path in html_files:
         parsed = parse_report(path, raw_root, ingested_at)
+        if not parsed:
+            raise ValueError(f"No recognized tables in {path.relative_to(raw_root)}")
         reports.extend(parsed)
         for report in parsed:
             grouped[report.table_name].extend(report.records)
-            sources.append({"source_file": report.source_file, "sha256": report.sha256, "table": report.table_name})
+            sources.append({"source_file": report.source_file, "sha256": report.sha256, "table": report.table_name,
+                            "parsed_rows": len(report.records), "rejected_rows": report.rejected_rows,
+                            "excluded_totals": report.excluded_totals})
 
     table_results: list[TableResult] = []
     quality_tables: dict[str, object] = {}
@@ -99,6 +105,16 @@ def run_ingestion(raw_root: Path, output_root: Path) -> IngestionResult:
             input_rows = len(frame)
             business_columns = [column for column in frame.columns if column not in PROVENANCE_COLUMNS]
             frame = frame.sort_values(["source_priority", "source_file"], ascending=[False, True])
+            # Reports can carry rows from the next month. Prefer that month's own report,
+            # then its monthly snapshot over a fortnightly snapshot, including revisions.
+            month_names = {name: index for index, name in enumerate(
+                ("janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"), 1)}
+            source_month = frame["source_period"].map(lambda value: month_names.get(str(value).split("_")[0].casefold()))
+            source_year = pd.to_numeric(frame["source_period"].str.extract(r"_(\d{4})$", expand=False), errors="coerce")
+            dates = pd.to_datetime(frame["service_date"])
+            score = frame["source_priority"] + 10 * ((source_month == dates.dt.month) & (source_year == dates.dt.year))
+            priority = score.groupby(frame["service_date"]).transform("max")
+            frame = frame.loc[score == priority]
             frame = frame.drop_duplicates(subset=business_columns, keep="first").reset_index(drop=True)
             duplicates_removed = input_rows - len(frame)
             rejected_rows = sum(report.rejected_rows for report in reports if report.table_name == name)

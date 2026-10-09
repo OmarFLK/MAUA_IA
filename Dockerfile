@@ -17,9 +17,11 @@ COPY backend ./backend
 COPY semob_ai ./semob_ai
 COPY prompts ./prompts
 COPY knowledge ./knowledge
-COPY scripts/__init__.py scripts/index_documents.py ./scripts/
+COPY scripts/__init__.py scripts/index_documents.py scripts/build_cmob_data.py ./scripts/
+COPY data/public ./data/public
 
 RUN mkdir -p /app/data/database \
+    && python -m scripts.build_cmob_data \
     && python -m scripts.index_documents \
     && chown -R app:app /app
 USER app

@@ -19,6 +19,7 @@ class ParsedReport:
     rejected_rows: int
     source_file: str
     sha256: str
+    excluded_totals: int = 0
 
 
 def normalize_header(value: str) -> str:
@@ -38,8 +39,7 @@ def _schema_for(headers: list[str]) -> TableSchema | None:
 def _source_context(path: Path, raw_root: Path) -> dict[str, object]:
     relative = path.relative_to(raw_root).as_posix()
     parts = relative.split("/")
-    period_match = next((re.fullmatch(r"([A-Za-z]+)_(\d{4})", part) for part in parts), None)
-    period_match = period_match if period_match and period_match.group(0) else None
+    period_match = next((match for part in parts if (match := re.fullmatch(r"([A-Za-z]+)_(\d{4})", part))), None)
     period = period_match.group(0) if period_match else "unknown"
     granularity = "monthly" if any("mensal" in part.casefold() for part in parts) else "fortnightly"
     return {
@@ -93,9 +93,13 @@ def parse_report(path: Path, raw_root: Path, ingested_at: str | None = None) -> 
 
         records: list[dict[str, object]] = []
         rejected = 0
+        excluded_totals = 0
         for row in table.find_all("tr"):
             values = [cell.get_text(" ", strip=True) for cell in row.find_all("td", recursive=False)]
             if not values:
+                continue
+            if any(value.casefold().startswith("total") for value in values[:2]):
+                excluded_totals += 1
                 continue
             if len(values) != len(schema.columns):
                 rejected += 1
@@ -112,9 +116,11 @@ def parse_report(path: Path, raw_root: Path, ingested_at: str | None = None) -> 
             if schema.name in {"passengers_daily", "card_balances_daily", "card_movements_daily"}:
                 service_date = _date_from_month_day(record.pop("year_month"), record.pop("day"))
                 if service_date is None:
+                    rejected += 1
                     continue
                 record = {"service_date": service_date, **record}
             elif record.get("service_date") is None:
+                rejected += 1
                 continue
 
             record.update(
@@ -127,7 +133,7 @@ def parse_report(path: Path, raw_root: Path, ingested_at: str | None = None) -> 
             )
             records.append(record)
 
-        parsed.append(ParsedReport(schema.name, records, rejected, str(context["source_file"]), digest))
+        parsed.append(ParsedReport(schema.name, records, rejected, str(context["source_file"]), digest, excluded_totals))
 
     return parsed
 

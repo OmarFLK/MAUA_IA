@@ -11,6 +11,13 @@ class Metric:
 
 
 TABLES: dict[str, dict[str, object]] = {
+    "departures_by_line_hour": {
+        "dimensions": {"service_date", "line_code", "time_band"},
+        "metrics": {
+            "trips": Metric("SUM(trips)", "viagens", "Viagens por linha/faixa"),
+            "max_vehicles": Metric("MAX(vehicles)", "veiculos", "Maximo de veiculos na linha/faixa"),
+        },
+    },
     "operation_daily": {
         "dimensions": {"service_date", "weekday"},
         "metrics": {
@@ -78,7 +85,7 @@ TABLES: dict[str, dict[str, object]] = {
         "dimensions": {"service_date", "series"},
         "metrics": {
             "credits_transferred": Metric("SUM(credits_transferred)", "R$", "Créditos transferidos"),
-            "closing_balance": Metric("MAX(closing_balance)", "R$", "Saldo final"),
+            "closing_balance": Metric("ARG_MAX(closing_balance, service_date)", "R$", "Saldo final registrado (ultima data)"),
         },
     },
     "card_movements_daily": {

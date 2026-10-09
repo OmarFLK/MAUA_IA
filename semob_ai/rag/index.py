@@ -101,7 +101,7 @@ class LocalRagIndex:
                 "SELECT rowid, bm25(chunks_fts) FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts) LIMIT ?",
                 (" OR ".join(f'"{token}"' for token in query_tokens), limit * 4),
             ).fetchall()
-            lexical = {row_id: 1.0 / (1.0 + abs(score)) for row_id, score in lexical_rows}
+            lexical = {row_id: 1.0 / (1.0 + rank) for rank, (row_id, _) in enumerate(lexical_rows)}
             query_vector = _embedding(query)
             candidates = connection.execute("SELECT id, source, chunk_index, content, embedding FROM chunks").fetchall()
         finally:

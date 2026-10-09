@@ -61,6 +61,16 @@ def test_render_postgres_url_is_normalized_for_asyncpg():
     )
 
 
+def test_dashboard_catalog_is_authenticated_and_has_safe_metrics(client: TestClient):
+    assert client.get('/api/semob/catalog').status_code == 401
+    response = client.get('/api/semob/catalog', headers=login_headers(client))
+    assert response.status_code == 200
+    body = response.json()
+    assert body['tables']['passengers_daily']['row_count'] == 62
+    assert body['tables']['passengers_daily']['dimensions'] == ['service_date']
+    assert 'SUM(' not in json.dumps(body)
+
+
 def test_gemma_payload_omits_qwen_thinking_parameter():
     request = ChatRequest(
         messages=[Message(role="user", content="Olá")],

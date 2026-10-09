@@ -1,0 +1,1810 @@
+{
+  "format_version": 1,
+  "dataset": "cmob-semob-2026",
+  "source_files": 44,
+  "normalization": "ISO dates, UTF-8 CSV, comma delimiter, dot decimal, text identifiers",
+  "precedence": "report for the service month, then monthly before fortnightly; exact duplicates removed",
+  "excluded_public_columns": [
+    "trip_exceptions.driver",
+    "ingested_at"
+  ],
+  "tables": {
+    "card_balances_daily": {
+      "file": "card_balances_daily.csv",
+      "sha256": "25292a4564a80e831626a7d303ceaceff48c422339dff3eab3408f98a631dba4",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "series",
+          "type": "BIGINT"
+        },
+        {
+          "name": "credits_transferred",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "closing_balance",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 52,
+      "start": "2026-07-15",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 14,
+          "start": "2026-07-15",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-07-01",
+            "2026-07-02",
+            "2026-07-03",
+            "2026-07-04",
+            "2026-07-05",
+            "2026-07-06",
+            "2026-07-07",
+            "2026-07-08",
+            "2026-07-09",
+            "2026-07-10",
+            "2026-07-11",
+            "2026-07-12",
+            "2026-07-13",
+            "2026-07-14",
+            "2026-07-18",
+            "2026-07-25",
+            "2026-07-26"
+          ]
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 24,
+          "start": "2026-08-02",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-08-01",
+            "2026-08-08",
+            "2026-08-09",
+            "2026-08-16",
+            "2026-08-23",
+            "2026-08-29",
+            "2026-08-30"
+          ]
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "card_movements_daily": {
+      "file": "card_movements_daily.csv",
+      "sha256": "ec68598e2f3158dbd52a6715f0a60af6d45bf7b06ed49550d7209b71f1a05e8c",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "total_sales",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "total_usage",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "circulating_credit",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 71,
+      "start": "2026-07-01",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 26,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-07-03",
+            "2026-07-04",
+            "2026-07-05",
+            "2026-07-11",
+            "2026-07-12"
+          ]
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "departures_by_line_hour": {
+      "file": "departures_by_line_hour.csv",
+      "sha256": "0b9163fa46f01dc88001b1a1b1abf6bb53650d209e1595d2374293818d2e05fa",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "line_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "time_band",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "vehicles",
+          "type": "BIGINT"
+        },
+        {
+          "name": "trips",
+          "type": "BIGINT"
+        },
+        {
+          "name": "departures",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 14006,
+      "start": "2026-07-01",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 31,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "fulfillment_daily": {
+      "file": "fulfillment_daily.csv",
+      "sha256": "4a3ad55e628600b01ddaaa86dfba1f035a0024de2afd07dfb1c475d89b66ed89",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "morning_scheduled",
+          "type": "BIGINT"
+        },
+        {
+          "name": "morning_completed",
+          "type": "BIGINT"
+        },
+        {
+          "name": "afternoon_scheduled",
+          "type": "BIGINT"
+        },
+        {
+          "name": "afternoon_completed",
+          "type": "BIGINT"
+        },
+        {
+          "name": "evening_scheduled",
+          "type": "BIGINT"
+        },
+        {
+          "name": "evening_completed",
+          "type": "BIGINT"
+        },
+        {
+          "name": "scheduled_trips",
+          "type": "BIGINT"
+        },
+        {
+          "name": "completed_trips",
+          "type": "BIGINT"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 76,
+      "start": "2026-07-01",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 31,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "hour_daily": {
+      "file": "hour_daily.csv",
+      "sha256": "636de3ed616ab5ef284174a16062dd9726c61cec6994d3a2832c7fa1bfbd0ab3",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "time_band",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "vehicles",
+          "type": "BIGINT"
+        },
+        {
+          "name": "trips",
+          "type": "BIGINT"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 1596,
+      "start": "2026-07-01",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 31,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "line_daily": {
+      "file": "line_daily.csv",
+      "sha256": "ea06abe01ad049a716c455e119ce0580b2f1aaf79cb24ecd6e11e173108a3b47",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "line_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "total_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "trips",
+          "type": "BIGINT"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 698,
+      "start": "2026-07-01",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 31,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "operation_daily": {
+      "file": "operation_daily.csv",
+      "sha256": "24d2a7a9020899368a1de9f4f65028f36df21cac27732ea2e74aae3c2bd820ea",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "weekday",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "vehicles",
+          "type": "BIGINT"
+        },
+        {
+          "name": "max_vehicles_interval",
+          "type": "BIGINT"
+        },
+        {
+          "name": "scheduled_trips",
+          "type": "BIGINT"
+        },
+        {
+          "name": "completed_trips",
+          "type": "BIGINT"
+        },
+        {
+          "name": "trip_difference",
+          "type": "BIGINT"
+        },
+        {
+          "name": "productive_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "deadhead_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "total_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 76,
+      "start": "2026-07-01",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 31,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "passengers_daily": {
+      "file": "passengers_daily.csv",
+      "sha256": "a8ea577b585aeabb882031922e91163926c00d32d7a0a1cc40bfcac641e68d66",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "turnstile_passengers",
+          "type": "BIGINT"
+        },
+        {
+          "name": "advance_passengers",
+          "type": "BIGINT"
+        },
+        {
+          "name": "non_paying_passengers",
+          "type": "BIGINT"
+        },
+        {
+          "name": "total_passengers",
+          "type": "BIGINT"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 62,
+      "start": "2026-07-15",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 17,
+          "start": "2026-07-15",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-07-01",
+            "2026-07-02",
+            "2026-07-03",
+            "2026-07-04",
+            "2026-07-05",
+            "2026-07-06",
+            "2026-07-07",
+            "2026-07-08",
+            "2026-07-09",
+            "2026-07-10",
+            "2026-07-11",
+            "2026-07-12",
+            "2026-07-13",
+            "2026-07-14"
+          ]
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "trip_exceptions": {
+      "file": "trip_exceptions.csv",
+      "sha256": "447ee25c2acb32234f77b2c6751ae05360cf74eab0c0c9d7cc934a805a19102d",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "line_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "service",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "vehicle_prefix",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "direction",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "schedule",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "departure_status",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "arrival_status",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "scheduled_start",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "actual_start",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "scheduled_end",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "actual_end",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "productive_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 122,
+      "start": "2026-07-01",
+      "end": "2026-09-11",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 20,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-07-02",
+            "2026-07-03",
+            "2026-07-05",
+            "2026-07-07",
+            "2026-07-09",
+            "2026-07-13",
+            "2026-07-18",
+            "2026-07-20",
+            "2026-07-23",
+            "2026-07-24",
+            "2026-07-25"
+          ]
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 18,
+          "start": "2026-08-02",
+          "end": "2026-08-30",
+          "calendar_days": 31,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-08-01",
+            "2026-08-05",
+            "2026-08-09",
+            "2026-08-10",
+            "2026-08-12",
+            "2026-08-13",
+            "2026-08-15",
+            "2026-08-16",
+            "2026-08-22",
+            "2026-08-23",
+            "2026-08-26",
+            "2026-08-27",
+            "2026-08-31"
+          ]
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 4,
+          "start": "2026-09-02",
+          "end": "2026-09-11",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-01",
+            "2026-09-04",
+            "2026-09-05",
+            "2026-09-06",
+            "2026-09-07",
+            "2026-09-08",
+            "2026-09-09",
+            "2026-09-12",
+            "2026-09-13",
+            "2026-09-14",
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    },
+    "trips": {
+      "file": "trips.csv",
+      "sha256": "ac03595d85d8b985396422a384730f44dcbba1c53d4d4fa01455069f1c68c0f0",
+      "columns": [
+        {
+          "name": "service_date",
+          "type": "DATE"
+        },
+        {
+          "name": "line_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "vehicle_prefix",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "direction",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "time_band",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "actual_start",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "actual_end",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "productive_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "deadhead_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "total_km",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_period",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_granularity",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_generated_at",
+          "type": "VARCHAR"
+        }
+      ],
+      "row_count": 91108,
+      "start": "2026-07-01",
+      "end": "2026-09-14",
+      "periods": [
+        {
+          "month": "2026-07",
+          "observed_days": 31,
+          "start": "2026-07-01",
+          "end": "2026-07-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-08",
+          "observed_days": 31,
+          "start": "2026-08-01",
+          "end": "2026-08-31",
+          "calendar_days": 31,
+          "all_calendar_days_present": true,
+          "missing_dates": []
+        },
+        {
+          "month": "2026-09",
+          "observed_days": 14,
+          "start": "2026-09-01",
+          "end": "2026-09-14",
+          "calendar_days": 30,
+          "all_calendar_days_present": false,
+          "missing_dates": [
+            "2026-09-15",
+            "2026-09-16",
+            "2026-09-17",
+            "2026-09-18",
+            "2026-09-19",
+            "2026-09-20",
+            "2026-09-21",
+            "2026-09-22",
+            "2026-09-23",
+            "2026-09-24",
+            "2026-09-25",
+            "2026-09-26",
+            "2026-09-27",
+            "2026-09-28",
+            "2026-09-29",
+            "2026-09-30"
+          ]
+        }
+      ]
+    }
+  },
+  "sources": [
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_202608.html",
+      "sha256": "0dc973cb15e964d2054e175b107d7f5c050ddce9697e988e9cfc0400bbf21ea9",
+      "table": "operation_daily",
+      "parsed_rows": 31,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_FCV_202608.html",
+      "sha256": "d0472cef82dce1b4f120f98233ede764ca1bbd177dbdebd5743e930ae4950cf2",
+      "table": "fulfillment_daily",
+      "parsed_rows": 31,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_FxHr_202608.html",
+      "sha256": "e69e1bf5e70312c6a41d96a141faec3146d1830addba28c31c795d766de397d6",
+      "table": "departures_by_line_hour",
+      "parsed_rows": 5598,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_Linhas_202608.html",
+      "sha256": "c6d4493624fbe0311114531734ee13f77c82b6a78c7ffead284713a4830a8548",
+      "table": "line_daily",
+      "parsed_rows": 279,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_Resumo_FxHr_202608.html",
+      "sha256": "5270dfabcafd2ba8a0ca9353d593daddea45e2a21267a5bed1eaba6923947267",
+      "table": "hour_daily",
+      "parsed_rows": 651,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_Viag_Ninic_202608.html",
+      "sha256": "1223fa6b49a055a7a09e7b2a490ed4e5086ef7cb599d493bc19fcb246c9ac5f9",
+      "table": "trip_exceptions",
+      "parsed_rows": 6,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_Viag_NRealiz_202608.html",
+      "sha256": "0f1708e0878ee79345cfdba6226b36a22032481296d89bcfe6d58f96587110cf",
+      "table": "trip_exceptions",
+      "parsed_rows": 42,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_Viag_NTerm_202608.html",
+      "sha256": "07f23b38bb17b3a1fe9b6554954c51e0a16805ee053aacbb1c68ee9b90f1402b",
+      "table": "trip_exceptions",
+      "parsed_rows": 8,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Mensal_Viagens_202608.html",
+      "sha256": "071822f9ea77e0e0d71f3907a82a7b1955dddf389223707b2437bdd288339dcc",
+      "table": "trips",
+      "parsed_rows": 36751,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Passageiros_Mensal.html",
+      "sha256": "47d89c354fb82c357de845c56eefc2fc0e570d93c36d7b13107cae49700120ba",
+      "table": "passengers_daily",
+      "parsed_rows": 31,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Saldos_Mensal.html",
+      "sha256": "f6d5a1709d7c63712ddadac6d4bc121df900037309a32dd0de726edc511d2807",
+      "table": "card_balances_daily",
+      "parsed_rows": 25,
+      "rejected_rows": 0,
+      "excluded_totals": 2
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Mensal/Saldos_Mensal.html",
+      "sha256": "f6d5a1709d7c63712ddadac6d4bc121df900037309a32dd0de726edc511d2807",
+      "table": "card_movements_daily",
+      "parsed_rows": 32,
+      "rejected_rows": 0,
+      "excluded_totals": 2
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Passageiros_Quinzenal.html",
+      "sha256": "ff7df16cb457297bee60a3dc319407549db31327d5ed8026d75b6eef22eb55dc",
+      "table": "passengers_daily",
+      "parsed_rows": 13,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_202608.html",
+      "sha256": "d9a5187d2b0efdb0cde28543f83121e95e82f3b527f4538288e944a2479875e6",
+      "table": "operation_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_FCV_202608.html",
+      "sha256": "cff9ed500d1b7f626ccd635db5e77056a7f1254c0a663e7c25c14e0c5d236434",
+      "table": "fulfillment_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_FxHr_202608.html",
+      "sha256": "80a8b56a5d50ec8aa0f4ccbb296b329c5fe06bac9e7031a70487694a257ea70b",
+      "table": "departures_by_line_hour",
+      "parsed_rows": 2531,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_Linhas_202608.html",
+      "sha256": "80345387d9b71faa103ce5ea8abf8b7c5abd5b4bae57277f6fa3d48547a0c4d7",
+      "table": "line_daily",
+      "parsed_rows": 126,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_Resumo_FxHr_202608.html",
+      "sha256": "25009994dd4cf8bcefa052134c711be5afba944f9b608bb470f703bb5c20dda4",
+      "table": "hour_daily",
+      "parsed_rows": 294,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_Viag_Ninic_202608.html",
+      "sha256": "b4e88f792db2b30c82891fce6937a9d169dc1d2595717f7da968f415b946a264",
+      "table": "trip_exceptions",
+      "parsed_rows": 6,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_Viag_NRealiz_202608.html",
+      "sha256": "10d8738e54d0b13ceb98cca79a6db26c7b58f15e29f39edabbef72b15359ba91",
+      "table": "trip_exceptions",
+      "parsed_rows": 25,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_Viag_NTerm_202608.html",
+      "sha256": "e4d07c893a74c11f2f88e77795cfc3aecc09fe95277c30905efc605d2a4e2a2d",
+      "table": "trip_exceptions",
+      "parsed_rows": 8,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Quinzenal_Viagens_202608.html",
+      "sha256": "dc38afd38826564093e275065e26329eead669a97f28977ad71b06bb0e957d61",
+      "table": "trips",
+      "parsed_rows": 16819,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Saldos_Quinzenal.html",
+      "sha256": "2326fd274fc6d69604a21439ee03dfc04c46373898a210d8383d813256883a95",
+      "table": "card_balances_daily",
+      "parsed_rows": 10,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Agosto_2026/Quinzenal/Saldos_Quinzenal.html",
+      "sha256": "2326fd274fc6d69604a21439ee03dfc04c46373898a210d8383d813256883a95",
+      "table": "card_movements_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_202607.html",
+      "sha256": "9f0aa0def3e6efae98773785f32f8eb4a4c97d0e42bd6e5ce8b54cf0eb069d57",
+      "table": "operation_daily",
+      "parsed_rows": 31,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_FCV_202607.html",
+      "sha256": "3252d500cec202f19bcf581e74685dc2c22312fbd8ff029cfb20eca0474742bd",
+      "table": "fulfillment_daily",
+      "parsed_rows": 31,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_FxHr_202607.html",
+      "sha256": "cb3f16267d2b01e56ffade169b9acef8b30f36c5fffbb985838ac2c478e414fd",
+      "table": "departures_by_line_hour",
+      "parsed_rows": 5882,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_Linhas_202607.html",
+      "sha256": "a6bb3015956528d863235606c38c07a6f4d6436c08f029f235a101b6da110c92",
+      "table": "line_daily",
+      "parsed_rows": 293,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_Resumo_FxHr_202607.html",
+      "sha256": "7f21b4d0f6a6bb1ea35fd226fb7238a8b0278f67bf0082222cd8569cb5c24a96",
+      "table": "hour_daily",
+      "parsed_rows": 651,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_Viag_Ninic_202607.html",
+      "sha256": "73fa0ac5e48eef402baa1100c81bd9c7027c6bc0e97690742db8681a3fbd4f9b",
+      "table": "trip_exceptions",
+      "parsed_rows": 3,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_Viag_NRealiz_202607.html",
+      "sha256": "8549ffaa600ac99db8336bffacc5f1cedafdfc097d3f3028a4cdb7864cc33f1c",
+      "table": "trip_exceptions",
+      "parsed_rows": 50,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_Viag_NTerm_202607.html",
+      "sha256": "a0f3a2949739a62839a05ff8b72f84db5543c3194ce6c6aeb22ce6ca4083dd58",
+      "table": "trip_exceptions",
+      "parsed_rows": 4,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Mensal_Viagens_202607.html",
+      "sha256": "dba2ea8dbc12808ffc8d48194a9da12dcc063a384a6fcfa3df8cfd187d90bd3f",
+      "table": "trips",
+      "parsed_rows": 38077,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Passageiros.html",
+      "sha256": "546ba414554ceed996f0c856734477a8f0cdc0a3be8dc5d4260ce84d26458aa7",
+      "table": "passengers_daily",
+      "parsed_rows": 20,
+      "rejected_rows": 0,
+      "excluded_totals": 2
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Saldos.html",
+      "sha256": "1254ffdcacdb48b47db4703d5a5c32f4254c56954187e703654f8164c7900e3f",
+      "table": "card_balances_daily",
+      "parsed_rows": 16,
+      "rejected_rows": 0,
+      "excluded_totals": 2
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Julho_2026/Mensal/Saldos.html",
+      "sha256": "1254ffdcacdb48b47db4703d5a5c32f4254c56954187e703654f8164c7900e3f",
+      "table": "card_movements_daily",
+      "parsed_rows": 29,
+      "rejected_rows": 0,
+      "excluded_totals": 3
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Passageiros_Quinzenal.html",
+      "sha256": "419b6306a9bae13a09be6a7ae61c0f59391884ca6b361f949cdd3081925673d0",
+      "table": "passengers_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_202609.html",
+      "sha256": "f09c01bfbe095a9923a9bb4bac14a5cf4c16b5fae5c08f034b9b18c7abd8758f",
+      "table": "operation_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_FCV_202609.html",
+      "sha256": "7016796b1eec79959c4a41745a61bf63e5fdda36eafd9831e4206e3d8cb175df",
+      "table": "fulfillment_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_FxHr_202609.html",
+      "sha256": "2835c347de852f4876eac5c5cf4fcd6547f9829150611a01ab6a7820ee8a1ca8",
+      "table": "departures_by_line_hour",
+      "parsed_rows": 2526,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_Linhas_202609.html",
+      "sha256": "d01b64a9aa0d78b29f779282a8b53cabbf2888e50a2e0acb6b78533f34deb39f",
+      "table": "line_daily",
+      "parsed_rows": 126,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_Resumo_FxHr_202609.html",
+      "sha256": "2ffcbe53717d93b193f33be855445d2854461d849944140d5e9137ccae612d17",
+      "table": "hour_daily",
+      "parsed_rows": 294,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_Viag_Ninic_202609.html",
+      "sha256": "8a02880913c4fcc3caa3c8d9891331b22ad29aa858a4b954b51c9f5bde7271be",
+      "table": "trip_exceptions",
+      "parsed_rows": 0,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_Viag_NRealiz_202609.html",
+      "sha256": "ed5ec04bc032bc7b714674a5da03883f7176c78b38a0f38f4a93a2673bfb30de",
+      "table": "trip_exceptions",
+      "parsed_rows": 8,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_Viag_NTerm_202609.html",
+      "sha256": "24f1f85b66511fa70621ea98ae9feff9116c40be6fbf065c047d19668d2a9774",
+      "table": "trip_exceptions",
+      "parsed_rows": 1,
+      "rejected_rows": 0,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Quinzenal_Viagens_202609.html",
+      "sha256": "d43e84fe608831182860542c05f2602b86a665c00b45b46b8899e11cb23a72e2",
+      "table": "trips",
+      "parsed_rows": 16280,
+      "rejected_rows": 1,
+      "excluded_totals": 0
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Saldos_Quinzenal.html",
+      "sha256": "d3f8019cc4be1e5f70cd3f21b7b9d6c5500c9b5ce9632a891a65d623b116dc53",
+      "table": "card_balances_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    },
+    {
+      "source_file": "Dados de Utilização do Transporte Municipal/Setembro_2026/Quinzenal/Saldos_Quinzenal.html",
+      "sha256": "d3f8019cc4be1e5f70cd3f21b7b9d6c5500c9b5ce9632a891a65d623b116dc53",
+      "table": "card_movements_daily",
+      "parsed_rows": 14,
+      "rejected_rows": 0,
+      "excluded_totals": 1
+    }
+  ],
+  "quality": {
+    "card_balances_daily": {
+      "summary": {
+        "name": "card_balances_daily",
+        "input_rows": 65,
+        "output_rows": 52,
+        "duplicates_removed": 13,
+        "rejected_rows": 0,
+        "min_date": "2026-07-15",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "series_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "credits_transferred_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "closing_balance_non_negative",
+          "failures": 0
+        }
+      ]
+    },
+    "card_movements_daily": {
+      "summary": {
+        "name": "card_movements_daily",
+        "input_rows": 89,
+        "output_rows": 71,
+        "duplicates_removed": 18,
+        "rejected_rows": 0,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "total_sales_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "total_usage_non_negative",
+          "failures": 0
+        }
+      ]
+    },
+    "departures_by_line_hour": {
+      "summary": {
+        "name": "departures_by_line_hour",
+        "input_rows": 16537,
+        "output_rows": 14006,
+        "duplicates_removed": 2531,
+        "rejected_rows": 4,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "vehicles_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "trips_non_negative",
+          "failures": 0
+        }
+      ]
+    },
+    "fulfillment_daily": {
+      "summary": {
+        "name": "fulfillment_daily",
+        "input_rows": 90,
+        "output_rows": 76,
+        "duplicates_removed": 14,
+        "rejected_rows": 4,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "morning_scheduled_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "morning_completed_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "afternoon_scheduled_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "afternoon_completed_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "evening_scheduled_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "evening_completed_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "scheduled_trips_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "completed_trips_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "completed_not_above_scheduled",
+          "failures": 0
+        }
+      ]
+    },
+    "hour_daily": {
+      "summary": {
+        "name": "hour_daily",
+        "input_rows": 1890,
+        "output_rows": 1596,
+        "duplicates_removed": 294,
+        "rejected_rows": 4,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "vehicles_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "trips_non_negative",
+          "failures": 0
+        }
+      ]
+    },
+    "line_daily": {
+      "summary": {
+        "name": "line_daily",
+        "input_rows": 824,
+        "output_rows": 698,
+        "duplicates_removed": 126,
+        "rejected_rows": 4,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "total_km_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "trips_non_negative",
+          "failures": 0
+        }
+      ]
+    },
+    "operation_daily": {
+      "summary": {
+        "name": "operation_daily",
+        "input_rows": 90,
+        "output_rows": 76,
+        "duplicates_removed": 14,
+        "rejected_rows": 0,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "vehicles_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "max_vehicles_interval_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "scheduled_trips_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "completed_trips_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "trip_difference_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "productive_km_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "deadhead_km_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "total_km_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "km_components_match_total",
+          "failures": 0
+        },
+        {
+          "check": "completed_not_above_scheduled",
+          "failures": 0
+        }
+      ]
+    },
+    "passengers_daily": {
+      "summary": {
+        "name": "passengers_daily",
+        "input_rows": 78,
+        "output_rows": 62,
+        "duplicates_removed": 16,
+        "rejected_rows": 0,
+        "min_date": "2026-07-15",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "turnstile_passengers_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "advance_passengers_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "non_paying_passengers_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "total_passengers_non_negative",
+          "failures": 0
+        }
+      ]
+    },
+    "trip_exceptions": {
+      "summary": {
+        "name": "trip_exceptions",
+        "input_rows": 161,
+        "output_rows": 122,
+        "duplicates_removed": 39,
+        "rejected_rows": 0,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-11"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "productive_km_non_negative",
+          "failures": 0
+        }
+      ]
+    },
+    "trips": {
+      "summary": {
+        "name": "trips",
+        "input_rows": 107927,
+        "output_rows": 91108,
+        "duplicates_removed": 16819,
+        "rejected_rows": 4,
+        "min_date": "2026-07-01",
+        "max_date": "2026-09-14"
+      },
+      "checks": [
+        {
+          "check": "service_date_not_null",
+          "failures": 0
+        },
+        {
+          "check": "productive_km_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "deadhead_km_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "total_km_non_negative",
+          "failures": 0
+        },
+        {
+          "check": "km_components_match_total",
+          "failures": 0
+        }
+      ]
+    }
+  },
+  "summary": {
+    "file": "monthly_summary.csv",
+    "row_count": 111,
+    "sha256": "f447d12b03e7b2806269da2c834a076244e50e0ab4e0a5f7003d3fc4dd8b774a"
+  },
+  "data_version": "cc134d63c40ea2fe"
+}

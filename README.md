@@ -1,5 +1,10 @@
 # Analista SEMOB com Gemma via Barô
 
+Dados CMob publicados em [data/public](data/public/README.md). O Docker agora
+reconstroi o DuckDB e o RAG no Render. [Dados, RAG, fine-tuning e API do futuro
+dashboard](docs/CMOB_DATA_RAG_TRAINING.md) descreve a entrega e os limites:
+fine-tuning preparado, ainda nao executado ou ativado.
+
 Chatbot local para análise de transporte público municipal. A aplicação usa FastAPI + React, dados canônicos em Parquet, consultas DuckDB validadas, RAG textual local e o modelo `google/gemma-3-27b` pela API OpenAI-compatible Barô da Mauá.
 
 ## Estado atual

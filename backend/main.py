@@ -30,6 +30,7 @@ from backend.conversations import (
 )
 from backend.models import User
 from semob_ai.analytics import AnalyticsExecutor, QueryPlan
+from semob_ai.analytics.catalog import TABLES
 from semob_ai.conversation.service import ConversationEngine
 
 
@@ -306,6 +307,28 @@ async def semob_query(
     executor = AnalyticsExecutor(settings.semob_database_file)
     result = executor.execute(plan)
     return asdict(result)
+
+
+@app.get("/api/semob/catalog")
+async def semob_catalog(
+    _current_user: Annotated[User, Depends(get_current_user)],
+) -> dict[str, Any]:
+    manifest_file = Path(__file__).resolve().parent.parent / "data/public/manifest.json"
+    if not settings.semob_database_file.is_file() or not manifest_file.is_file():
+        raise HTTPException(status_code=503, detail="CMob analytical snapshot is not available")
+    manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    return {
+        "data_version": manifest["data_version"],
+        "tables": {
+            name: {
+                **{key: table[key] for key in ("row_count", "start", "end", "periods")},
+                "dimensions": sorted(TABLES[name]["dimensions"]),
+                "metrics": {key: {"label": metric.label, "unit": metric.unit}
+                            for key, metric in TABLES[name]["metrics"].items()},
+            }
+            for name, table in manifest["tables"].items() if name in TABLES
+        },
+    }
 
 
 @app.get("/api/debug/session")

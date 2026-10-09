@@ -44,6 +44,9 @@ def test_parser_handles_malformed_smart_report_and_totals(tmp_path: Path) -> Non
     assert len(parsed[0].records) == 1
     assert parsed[0].records[0]["total_km"] == 7_233.7
     assert parsed[0].records[0]["source_granularity"] == "monthly"
+    assert parsed[0].records[0]["source_period"] == "Agosto_2026"
+    assert parsed[0].excluded_totals == 1
+    assert parsed[0].rejected_rows == 0
 
 
 def test_monthly_report_wins_over_fortnightly_duplicate(tmp_path: Path) -> None:
@@ -59,4 +62,26 @@ def test_monthly_report_wins_over_fortnightly_duplicate(tmp_path: Path) -> None:
     assert operation.output_rows == 1
     assert operation.duplicates_removed == 1
     assert frame.iloc[0]["source_granularity"] == "monthly"
+
+
+def test_nested_archive_and_revised_monthly_snapshot(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    base = raw / "Archive" / "Agosto_2026"
+    write_cp1252(base / "Mensal" / "report.html", OPERATION_HTML)
+    write_cp1252(base / "Quinzenal" / "report.html", OPERATION_HTML.replace("920", "900"))
+    run_ingestion(raw, tmp_path / "data")
+    frame = pd.read_parquet(tmp_path / "data/processed/parquet/operation_daily.parquet")
+    assert len(frame) == 1
+    assert frame.iloc[0]["completed_trips"] == 920
+    assert frame.iloc[0]["source_period"] == "Agosto_2026"
+
+
+def test_service_month_own_report_wins_over_carryover(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    write_cp1252(raw / "Julho_2026/Mensal/report.html", OPERATION_HTML.replace("920", "800"))
+    write_cp1252(raw / "Agosto_2026/Quinzenal/report.html", OPERATION_HTML)
+    run_ingestion(raw, tmp_path / "data")
+    frame = pd.read_parquet(tmp_path / "data/processed/parquet/operation_daily.parquet")
+    assert len(frame) == 1
+    assert frame.iloc[0]["completed_trips"] == 920
 

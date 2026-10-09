@@ -26,7 +26,7 @@ def _period(question: str) -> DatePeriod:
     if len(dates) == 1:
         return DatePeriod(start=dates[0], end=dates[0])
     for name, month in MONTHS.items():
-        if name in question:
+        if re.search(rf"\b{name}\b", question):
             year_match = re.search(r"\b(20\d{2})\b", question)
             year = int(year_match.group(1)) if year_match else 2026
             return DatePeriod(start=date(year, month, 1), end=date(year, month, calendar.monthrange(year, month)[1]))
@@ -65,8 +65,8 @@ def plan_question(raw_question: str) -> QueryPlan | None:
         metric = "credits_transferred" if "transfer" in question else "closing_balance"
         return QueryPlan(dataset="card_balances_daily", metrics=[metric], dimensions=dimensions, period=period, limit=limit)
 
-    if any(term in question for term in ("venda", "utilizacao", "credito circulante")):
-        metric = "total_sales" if "venda" in question else "total_usage" if "utilizacao" in question else "circulating_credit"
+    if any(term in question for term in ("venda", "faturamento", "receita", "utilizacao", "credito circulante")):
+        metric = "total_sales" if any(term in question for term in ('venda', 'faturamento', 'receita')) else "total_usage" if "utilizacao" in question else "circulating_credit"
         return QueryPlan(dataset="card_movements_daily", metrics=[metric], dimensions=dimensions, period=period, limit=limit)
 
     if any(term in question for term in ("exce", "nao realizada", "nao iniciada", "nao terminada")):
@@ -80,6 +80,14 @@ def plan_question(raw_question: str) -> QueryPlan | None:
             order_by=[OrderBy(field="exception_count", direction="desc")] if dimensions else [],
             limit=limit,
         )
+
+    shift = next((name for name in ('manha', 'tarde', 'noite') if re.search(rf'\b{name}\b', question)), None)
+    if shift and ('viag' in question or 'cumprimento' in question):
+        name = {'manha': 'morning', 'tarde': 'afternoon', 'noite': 'evening'}[shift]
+        metric = name + ('_scheduled' if 'programad' in question else '_completed')
+        return QueryPlan(dataset='fulfillment_daily', metrics=[metric], dimensions=dimensions, period=period, limit=limit)
+    if 'cumprimento' in question:
+        return QueryPlan(dataset='fulfillment_daily', metrics=['scheduled_trips', 'completed_trips'], dimensions=dimensions, period=period, limit=limit)
 
     line_group = "por linha" in question or "linhas" in question
     hour_group = any(term in question for term in ("por horario", "por faixa", "faixa horaria"))
@@ -98,8 +106,12 @@ def plan_question(raw_question: str) -> QueryPlan | None:
     if "km" in question or "quilometr" in question:
         metric = "deadhead_km" if "improdut" in question else "productive_km" if "produt" in question else "total_km"
         dataset = "line_daily" if line_group or filters else "operation_daily"
+        if hour_group or ((line_group or filters) and metric != 'total_km'):
+            dataset = 'trips'
     elif "viagem" in question or "viagens" in question:
-        if line_group or filters:
+        if hour_group and (line_group or filters):
+            dataset, metric = 'departures_by_line_hour', 'trips'
+        elif line_group or filters:
             dataset, metric = "line_daily", "trips"
         elif hour_group:
             dataset, metric = "hour_daily", "trips"
@@ -107,9 +119,9 @@ def plan_question(raw_question: str) -> QueryPlan | None:
             dataset = "operation_daily"
             metric = "scheduled_trips" if "programad" in question else "trip_difference" if "diferenca" in question else "completed_trips"
     elif "veiculo" in question:
-        dataset = "hour_daily" if hour_group else "operation_daily"
+        dataset = 'departures_by_line_hour' if hour_group and (line_group or filters) else "hour_daily" if hour_group else "operation_daily"
         metric = "max_vehicles" if any(term in question for term in ("max", "maior", "pico")) else "average_vehicles"
-        if dataset == "hour_daily" and metric == "average_vehicles":
+        if dataset in {'hour_daily', 'departures_by_line_hour'} and metric == "average_vehicles":
             metric = "max_vehicles"
     elif period.start and any(term in question for term in ("resumo", "visao geral", "panorama", "dados")):
         return QueryPlan(

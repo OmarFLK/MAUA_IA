@@ -1,0 +1,25 @@
+{
+  "trained": false,
+  "adapter_active": false,
+  "purpose": "Learn grounded analytical responses, not memorize changing transport counts",
+  "split": "temporal; latest month held out",
+  "validation_month": "2026-09",
+  "seed": 2026,
+  "files": {
+    "train.jsonl": {
+      "examples": 517,
+      "sha256": "03081daa74f877143ec770ae3f87325991cd9470906df9eeb0fd854b39bfd07f"
+    },
+    "validation.jsonl": {
+      "examples": 121,
+      "sha256": "2dcda3283c1e42cfbb22f40017118247c143d3a9c90fb5c6970114169991971f"
+    }
+  },
+  "review_status": "automatically generated; human review required before training",
+  "remaining_requirements": [
+    "compatible CUDA training environment",
+    "licensed local base model weights",
+    "training run and held-out evaluation",
+    "adapter hosting and CMob-only provider configuration"
+  ]
+}

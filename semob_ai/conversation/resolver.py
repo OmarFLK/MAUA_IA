@@ -31,7 +31,8 @@ def _shift_month(period: DatePeriod, offset: int) -> DatePeriod | None:
 def _named_periods(question: str, reference_year: int = 2026) -> list[DatePeriod]:
     year_match = re.search(r"\b(20\d{2})\b", question)
     year = int(year_match.group(1)) if year_match else reference_year
-    found = [(question.index(name), _month_period(year, month)) for name, month in MONTHS.items() if name in question]
+    found = [(match.start(), _month_period(year, month)) for name, month in MONTHS.items()
+             if (match := re.search(rf"\b{name}\b", question))]
     return [period for _, period in sorted(found, key=lambda item: item[0])]
 
 
@@ -382,6 +383,20 @@ class FollowUpResolver:
             metric = "morning_scheduled" if any("scheduled" in item or "program" in item for item in base.metrics) else "morning_completed"
             plan = QueryPlan(dataset="fulfillment_daily", metrics=[metric], period=plan.period, dimensions=[d for d in plan.dimensions if d == "service_date"], limit=plan.limit)
             modified.update(dataset=plan.dataset, metrics=plan.metrics)
+
+        if "por dia" in question or "diari" in question:
+            plan.dimensions = list(dict.fromkeys(['service_date', *plan.dimensions]))
+            plan.limit = max(plan.limit, 50)
+            plan.order_by = [OrderBy(field='service_date', direction='asc')]
+            modified['dimensions'] = plan.dimensions
+
+        if any(term in question for term in ('por horario', 'por faixa')) and plan.dataset == 'passengers_daily':
+            return ResolvedRequest(
+                original_question=message, resolved_question='Detalhar passageiros por horario',
+                is_follow_up=True, follow_up_type=FollowUpType.DRILL_DOWN, confidence='HIGH',
+                response_mode='clarification', inherited_context=inherited,
+                clarification='Os passageiros estao agregados por data, sem detalhe por horario. Posso detalhar por dia; viagens possuem faixas horarias.',
+            )
 
         if "por linha" in question:
             if base.dataset in {"operation_daily", "line_daily", "trips"}:

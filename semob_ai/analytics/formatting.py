@@ -23,8 +23,11 @@ def _value(value: object, unit: str | None = None) -> str:
 def _coverage_warning(plan: QueryPlan, result: QueryResult) -> str | None:
     starts_before = bool(plan.period.start and result.coverage_start and str(plan.period.start) < result.coverage_start)
     ends_after = bool(plan.period.end and result.coverage_end and str(plan.period.end) > result.coverage_end)
-    if starts_before or ends_after:
-        return "Aviso: o período solicitado ultrapassa a cobertura disponível; o resultado é parcial."
+    missing_days = bool(plan.period.start and plan.period.end and result.observed_days
+                        and result.source_table != 'trip_exceptions'
+                        and result.observed_days < (plan.period.end - plan.period.start).days + 1)
+    if starts_before or ends_after or missing_days:
+        return "Aviso: o periodo solicitado nao possui registros para todos os dias na fonte; o resultado é parcial."
     return None
 
 
@@ -57,6 +60,7 @@ def format_result(plan: QueryPlan, result: QueryResult) -> str:
     ])
     if warning := _coverage_warning(plan, result):
         lines.append(warning)
+    lines.append(f"Dias com registros no recorte: {result.observed_days}; intervalo observado: {result.observed_start} a {result.observed_end}. Ausencia de registro nao significa zero.")
     return "\n".join(lines)
 
 
@@ -69,7 +73,7 @@ def _period_label(plan: QueryPlan) -> str:
 
 
 def format_breakdown(plan: QueryPlan, result: QueryResult) -> str:
-    if not result.rows:
+    if not result.rows or plan.dimensions:
         return format_result(plan, result)
     row = result.rows[0]
     paying = float(row.get("paying_passengers") or 0)
@@ -92,6 +96,7 @@ def format_breakdown(plan: QueryPlan, result: QueryResult) -> str:
     ]
     if warning := _coverage_warning(plan, result):
         lines.append(warning)
+    lines.append(f"Dias com registros no recorte: {result.observed_days}; intervalo observado: {result.observed_start} a {result.observed_end}.")
     return "\n".join(lines)
 
 
@@ -193,7 +198,7 @@ def format_projection(plan: QueryPlan, result: QueryResult) -> str:
     coverage_end = date.fromisoformat(result.coverage_end) if result.coverage_end else plan.period.end
     observed_start = max(plan.period.start, coverage_start)
     observed_end = min(plan.period.end, coverage_end)
-    observed_days = (observed_end - observed_start).days + 1
+    observed_days = result.observed_days
     if observed_days <= 0:
         return "Não há dias observados no período para calcular a projeção."
 
