@@ -58,13 +58,25 @@ class CMobAssistant:
         history: list[dict[str, str]],
     ) -> PreparedAssistantResponse:
         state = await load_state(user_id, conversation_id, assistant_mode=self.mode.value)
-        conversation = self.engine.handle(
-            user_id,
-            conversation_id,
-            question,
-            history=history,
-            state=state,
-        )
+        try:
+            conversation = self.engine.handle(
+                user_id,
+                conversation_id,
+                question,
+                history=history,
+                state=state,
+            )
+        except FileNotFoundError:
+            return PreparedAssistantResponse(
+                mode=self.mode,
+                kind="analytics_unavailable",
+                answer=(
+                    "A base analitica da SEMOB ainda nao esta carregada neste servidor. "
+                    "Nao vou inventar numeros: para responder essa consulta, o Render precisa receber "
+                    "o arquivo autorizado `semob.duckdb` configurado em `SEMOB_DATABASE_PATH`."
+                ),
+                local_only=True,
+            )
         if conversation.kind == "analytics":
             await save_state(conversation.state, assistant_mode=self.mode.value)
         if conversation.kind in {"out_of_scope", "clarification"}:

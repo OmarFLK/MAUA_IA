@@ -41,6 +41,7 @@ export type Health = {
   model: string
   supports_thinking: boolean
   analytics_ready: boolean
+  rag_ready?: boolean
 }
 
 export type AvailableModel = {
@@ -109,4 +110,3 @@ export type NavItem = {
   label: string
   icon: ComponentType<{ size?: number; strokeWidth?: number }>
 }
-

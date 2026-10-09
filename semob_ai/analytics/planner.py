@@ -111,6 +111,14 @@ def plan_question(raw_question: str) -> QueryPlan | None:
         metric = "max_vehicles" if any(term in question for term in ("max", "maior", "pico")) else "average_vehicles"
         if dataset == "hour_daily" and metric == "average_vehicles":
             metric = "max_vehicles"
+    elif period.start and any(term in question for term in ("resumo", "visao geral", "panorama", "dados")):
+        return QueryPlan(
+            intent="breakdown",
+            dataset="passengers_daily",
+            metrics=["paying_passengers", "non_paying_passengers", "total_passengers"],
+            period=period,
+            limit=limit,
+        )
     else:
         return None
 

@@ -111,6 +111,7 @@ async def health() -> dict[str, Any]:
         "model": settings.baro_model,
         "supports_thinking": settings.baro_supports_thinking,
         "analytics_ready": settings.semob_database_file.is_file(),
+        "rag_ready": settings.semob_rag_file.is_file(),
     }
 
 

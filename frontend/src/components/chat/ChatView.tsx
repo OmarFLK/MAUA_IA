@@ -126,10 +126,10 @@ export default function ChatView(props: Props) {
           <div className="message-list-v2">
             {props.conversation.messages.map((message) => (
               <article className={`chat-message ${message.role} ${message.error ? 'has-error' : ''}`} key={message.id}>
-                {message.role === 'assistant' ? <div className="assistant-avatar"><Waypoints size={16} /></div> : <UserAvatar name={props.profile.displayName} src={props.profile.avatarDataUrl} size="small" />}
+                {message.role === 'assistant' ? <div className="assistant-avatar">{isCMob ? <Waypoints size={16} /> : <Sparkles size={16} />}</div> : <UserAvatar name={props.profile.displayName} src={props.profile.avatarDataUrl} size="small" />}
                 <div className="message-column">
                   <div className="message-heading">
-                    <strong>{message.role === 'assistant' ? 'cMob AI' : props.profile.displayName}</strong>
+                    <strong>{message.role === 'assistant' ? (isCMob ? 'cMob AI' : 'Gemma Livre') : props.profile.displayName}</strong>
                     {props.settings.showTimestamps && <time>{formatTime(message.createdAt)}</time>}
                   </div>
                   {message.reasoning && (
@@ -171,7 +171,7 @@ export default function ChatView(props: Props) {
             rows={1}
             placeholder={ready ? (isCMob ? 'Pergunte à CMob AI' : 'Pergunte ao Gemma') : 'Aguardando conexão com a IA'}
             disabled={!ready || props.isStreaming}
-            aria-label="Mensagem para a cMob AI"
+            aria-label={`Mensagem para ${isCMob ? 'a cMob AI' : 'o Gemma Livre'}`}
           />
           {props.isStreaming ? <button className="composer-submit stop" onClick={props.onStop} aria-label="Interromper resposta"><Square size={14} fill="currentColor" /></button> : <button className="composer-submit" onClick={submit} disabled={!props.input.trim() || !ready} aria-label="Enviar mensagem"><Send size={17} /></button>}
         </div>

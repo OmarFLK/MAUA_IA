@@ -205,6 +205,26 @@ def test_unconfigured_ai_server_has_clear_error(client: TestClient):
     assert "BARO_API_KEY" in response.json()["detail"]
 
 
+def test_missing_semob_database_returns_clear_local_answer(client, monkeypatch, tmp_path):
+    from backend import main
+    from semob_ai.conversation.service import ConversationEngine
+
+    missing_database = tmp_path / "missing-semob.duckdb"
+    monkeypatch.setattr(main, "conversation_engine", ConversationEngine(missing_database, None))
+    response = client.post(
+        "/api/chat",
+        headers=login_headers(client),
+        json={
+            "messages": [{"role": "user", "content": "Me de um resumo dos dados de agosto."}],
+            "conversation_id": "missing-analytics-test",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "semob.duckdb" in response.text
+    assert "Nao vou inventar numeros" in response.text
+
+
 def test_development_session_debug_exposes_structured_state(client: TestClient):
     headers = login_headers(client)
     chat_response = client.post(

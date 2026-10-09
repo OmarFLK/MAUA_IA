@@ -27,7 +27,8 @@ const assistants = {
 export default function ModelStatus({ health, connectionError, models, assistantMode, onAssistantChange }: Props) {
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const status = connectionError ? 'offline' : !health ? 'connecting' : health.configured ? 'online' : health.analytics_ready ? 'degraded' : 'offline'
+  const cmobPartial = assistantMode === 'cmob' && !health?.analytics_ready
+  const status = connectionError ? 'offline' : !health ? 'connecting' : health.configured ? (cmobPartial ? 'degraded' : 'online') : health.analytics_ready ? 'degraded' : 'offline'
   const labels = { online: 'Online', offline: 'Offline', degraded: 'Parcial', connecting: 'Conectando' }
   const selected = assistants[assistantMode]
 

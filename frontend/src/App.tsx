@@ -341,7 +341,7 @@ function App() {
   else if (view.startsWith('settings-')) content = <SettingsPage view={view} user={user} profile={profile} settings={settings} health={health} onNavigate={navigate} onProfile={setProfile} onSettings={setSettings} />
   else content = <AdminPage view={view} isAdmin={isAdmin} health={health} models={models} usageRecords={usageRecords} settings={settings} onSettings={setSettings} />
 
-  return <div className="app-shell-v2">{mobileOpen && <button className="sidebar-scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}<Sidebar view={view} conversations={assistantConversations} activeId={activeId} user={user} profile={profile} isAdmin={isAdmin} mobileOpen={mobileOpen} assistantMode={assistantMode} onCloseMobile={() => setMobileOpen(false)} onNavigate={navigate} onNewChat={newConversation} onSelectConversation={selectConversation} onDeleteConversation={deleteConversation} onRenameConversation={renameConversation} onLogout={logout} />{content}</div>
+  return <div className={`app-shell-v2 assistant-${assistantMode}`}>{mobileOpen && <button className="sidebar-scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}<Sidebar view={view} conversations={assistantConversations} activeId={activeId} user={user} profile={profile} isAdmin={isAdmin} mobileOpen={mobileOpen} assistantMode={assistantMode} onCloseMobile={() => setMobileOpen(false)} onNavigate={navigate} onNewChat={newConversation} onSelectConversation={selectConversation} onDeleteConversation={deleteConversation} onRenameConversation={renameConversation} onLogout={logout} />{content}</div>
 }
 
 export default App

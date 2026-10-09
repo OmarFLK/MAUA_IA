@@ -17,8 +17,11 @@ COPY backend ./backend
 COPY semob_ai ./semob_ai
 COPY prompts ./prompts
 COPY knowledge ./knowledge
+COPY scripts/__init__.py scripts/index_documents.py ./scripts/
 
-RUN mkdir -p /app/data/database && chown -R app:app /app
+RUN mkdir -p /app/data/database \
+    && python -m scripts.index_documents \
+    && chown -R app:app /app
 USER app
 
 EXPOSE 8000

@@ -16,6 +16,14 @@ TRANSPORT_TERMS = {
     "quilometr", "km", "itinerario", "mobilidade", "saldo", "credito", "tarifa", "motorista",
     "horario", "operacao", "frota", "partida", "terminal",
 }
+DATA_WORK_TERMS = {
+    "dados", "indicador", "metrica", "estatistic", "relatorio", "dashboard", "serie historica",
+}
+DATA_REQUEST_TERMS = {"analise", "resumo", "panorama", "visao geral"}
+PERIOD_TERMS = {
+    "periodo", "mes", "ano", "semana", "dia", "janeiro", "fevereiro", "marco", "abril", "maio",
+    "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+}
 OUT_OF_SCOPE_TERMS = {
     "codigo python", "programar", "receita", "futebol", "filme", "medicina", "advogado", "bitcoin",
     "youtube", "politica", "eleicao", "presidente", "baixar videos", "faca um site", "site em react",
@@ -55,6 +63,10 @@ def check_scope(
         return ScopeDecision(True, "saudação")
     if any(term in plain for term in TRANSPORT_TERMS):
         return ScopeDecision(True, "tema de transporte público")
+    if any(term in plain for term in DATA_WORK_TERMS):
+        return ScopeDecision(True, "trabalho de analise de dados")
+    if any(term in plain for term in DATA_REQUEST_TERMS) and any(term in plain for term in PERIOD_TERMS):
+        return ScopeDecision(True, "pedido analitico com periodo")
     if context_active and follow_up_candidate:
         return ScopeDecision(True, "continuação contextual de uma análise SEMOB")
     return ScopeDecision(False, "não foi identificado vínculo com transporte público ou SEMOB")

@@ -385,3 +385,55 @@ def test_compound_request_on_new_session_matches_existing_session(engine: Conver
     assert fresh.resolution.plan == existing.resolution.plan
     assert fresh.resolution.comparison_plan == existing.resolution.comparison_plan
     assert fresh.resolution.response_mode == existing.resolution.response_mode == "projection"
+
+
+def test_reported_august_summary_dialogue_stays_in_data_analysis(engine: ConversationEngine) -> None:
+    greeting = engine.handle("user", "reported-summary", "opa, eai, modelo para aanalises do semob, certo?")
+    summary = engine.handle("user", "reported-summary", "me de um resumo dos dados de agosto")
+    details = engine.handle("user", "reported-summary", "preciso de mais detalhes em todos os sentidos por favor")
+
+    assert greeting.kind == "conceptual"
+    assert summary.kind == "analytics"
+    assert summary.resolution.plan is not None
+    assert summary.resolution.plan.dataset == "passengers_daily"
+    assert summary.resolution.plan.metrics == ["paying_passengers", "non_paying_passengers", "total_passengers"]
+    assert summary.resolution.plan.period.start.isoformat() == "2026-08-01"
+    assert "120" in (summary.answer or "")
+    assert "30" in (summary.answer or "")
+    assert details.kind == "conceptual"
+    assert details.resolution.is_follow_up is True
+    assert details.resolution.response_mode == "insight"
+    assert details.llm_context is not None
+    assert "total_passengers" in details.llm_context
+
+
+@pytest.mark.parametrize(
+    "message",
+    (
+        "quero uma visao geral dos dados de agosto",
+        "faca um resumo de agosto",
+        "me mostre o panorama dos indicadores de agosto",
+    ),
+)
+def test_flexible_monthly_data_summary_phrasing(engine: ConversationEngine, message: str) -> None:
+    response = engine.handle("user", f"summary-{message}", message)
+
+    assert response.kind == "analytics"
+    assert response.resolution.plan is not None
+    assert response.resolution.plan.dataset == "passengers_daily"
+    assert response.resolution.plan.period.start.isoformat() == "2026-08-01"
+
+
+@pytest.mark.parametrize(
+    "message",
+    ("detalhe melhor", "quero mais detalhes", "aprofunde isso", "explique todos os detalhes"),
+)
+def test_flexible_detail_follow_ups_use_current_evidence(engine: ConversationEngine, message: str) -> None:
+    engine.handle("user", f"details-{message}", "resumo dos dados de agosto")
+    response = engine.handle("user", f"details-{message}", message)
+
+    assert response.kind == "conceptual"
+    assert response.resolution.is_follow_up is True
+    assert response.resolution.response_mode == "insight"
+    assert response.llm_context is not None
+    assert "total_passengers" in response.llm_context
