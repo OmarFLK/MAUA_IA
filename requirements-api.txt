@@ -11,3 +11,4 @@ asyncpg==0.30.0
 alembic==1.16.5
 uvicorn[standard]==0.35.0
 duckdb==1.4.1
+numpy==2.5.3
