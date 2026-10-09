@@ -67,6 +67,11 @@ def test_local_planner_builds_ranked_line_query() -> None:
     assert plan.period.end == date(2026, 8, 31)
 
 
+def test_daily_series_is_not_cut_at_twenty_dates():
+    plan = plan_question('Passageiros por dia em agosto de 2026')
+    assert plan is not None and plan.limit >= 31
+
+
 def test_empty_aggregate_is_missing_not_zero(tmp_path: Path) -> None:
     database = tmp_path / 'semob.duckdb'
     create_database(database)

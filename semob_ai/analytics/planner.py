@@ -45,6 +45,8 @@ def plan_question(raw_question: str) -> QueryPlan | None:
 
     if "por dia" in question or "diari" in question:
         dimensions.append("service_date")
+        if not limit_match:
+            limit = 200
 
     if any(term in question for term in ("passageir", "catraca", "pagante", "pagaram", "pagou")):
         has_non_paying = bool(re.search(r"\bnao\s+(?:sao\s+|eram\s+|foram\s+)?pag", question))

@@ -86,6 +86,7 @@ def test_calculated_tables_do_not_need_model_transcription(client: TestClient, m
     answer = ''.join(json.loads(line).get('content', '') for line in response.text.splitlines())
     assert '47.166 em 19/08/2026' in answer
     assert '7.715 em 09/08/2026' in answer
+    assert '31/08/2026' in answer
 
 
 def test_gemma_payload_omits_qwen_thinking_parameter():
