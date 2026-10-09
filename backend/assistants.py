@@ -79,6 +79,11 @@ class CMobAssistant:
             )
         if conversation.kind == "analytics":
             await save_state(conversation.state, assistant_mode=self.mode.value)
+            if conversation.resolution.plan and conversation.resolution.plan.dimensions:
+                return PreparedAssistantResponse(
+                    mode=self.mode, kind=conversation.kind, answer=conversation.answer,
+                    local_only=True, conversation=conversation,
+                )
         if conversation.kind in {"out_of_scope", "clarification"}:
             return PreparedAssistantResponse(
                 mode=self.mode,

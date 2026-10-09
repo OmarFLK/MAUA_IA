@@ -52,6 +52,8 @@ def test_granularity_and_real_comparison(real_engine):
     assert daily.kind == 'analytics'
     assert daily.resolution.plan.dimensions == ['service_date']
     assert len(daily.state.previous_query_result_summary['primary']['rows']) > 1
+    assert '47.166 em 19/08/2026' in daily.answer
+    assert '7.715 em 09/08/2026' in daily.answer
     comparison = real_engine.handle('test', 'compare', 'Compare passageiros de julho e agosto.')
     assert '1.050.248' in comparison.answer and '489.653' in comparison.answer
     assert 'parcial' in comparison.answer

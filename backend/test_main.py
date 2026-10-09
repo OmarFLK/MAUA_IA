@@ -71,6 +71,23 @@ def test_dashboard_catalog_is_authenticated_and_has_safe_metrics(client: TestCli
     assert 'SUM(' not in json.dumps(body)
 
 
+def test_calculated_tables_do_not_need_model_transcription(client: TestClient, monkeypatch):
+    import backend.main as main
+    monkeypatch.setattr(main.settings, 'baro_api_key', 'configured-for-this-test')
+    async def forbidden(*args, **kwargs):
+        raise AssertionError('Calculated tables must not be rewritten by the model')
+        yield ''
+    monkeypatch.setattr(main, 'stream_completion', forbidden)
+    response = client.post('/api/chat', headers=login_headers(client), json={
+        'assistant': 'cmob', 'conversation_id': 'verified-daily-table',
+        'messages': [{'role': 'user', 'content': 'Passageiros por dia em agosto de 2026'}],
+    })
+    assert response.status_code == 200
+    answer = ''.join(json.loads(line).get('content', '') for line in response.text.splitlines())
+    assert '47.166 em 19/08/2026' in answer
+    assert '7.715 em 09/08/2026' in answer
+
+
 def test_gemma_payload_omits_qwen_thinking_parameter():
     request = ChatRequest(
         messages=[Message(role="user", content="Olá")],

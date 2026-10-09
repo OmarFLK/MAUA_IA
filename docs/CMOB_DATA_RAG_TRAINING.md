@@ -31,6 +31,9 @@ Nao e um modelo de embeddings aprendido: e recuperacao lexical/hashing local.
 O backend insere os trechos recuperados no contexto das respostas conceituais.
 Perguntas quantitativas seguem para planos SQL validados no DuckDB. Seguir o
 contexto da conversa nao exige repetir SEMOB em toda pergunta.
+Tabelas e rankings sao devolvidos diretamente do calculo, sem transcricao pelo
+modelo. Series diarias incluem maximos/minimos calculados; o Gemma continua
+disponivel para interpretar evidencias em perguntas de aprofundamento.
 
 ## Fine-tuning: preparado, NAO executado
 

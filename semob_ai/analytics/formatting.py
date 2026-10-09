@@ -38,6 +38,16 @@ def format_result(plan: QueryPlan, result: QueryResult) -> str:
             f"A tabela `{result.source_table}` cobre {result.coverage_start} a {result.coverage_end}."
         )
     lines: list[str] = []
+    if plan.dimensions == ['service_date'] and len(result.rows) > 1:
+        for metric in plan.metrics:
+            numeric_rows = [row for row in result.rows if isinstance(row.get(metric), (int, float, Decimal))]
+            if numeric_rows:
+                highest = max(numeric_rows, key=lambda row: row[metric])
+                lowest = min(numeric_rows, key=lambda row: row[metric])
+                lines.append(f"**{result.labels[metric]}**, entre as {len(numeric_rows)} datas retornadas: "
+                             f"maximo {_value(highest[metric], result.units[metric])} em {_value(highest['service_date'])}; "
+                             f"minimo {_value(lowest[metric], result.units[metric])} em {_value(lowest['service_date'])}.")
+        lines.append('')
     if not plan.dimensions and len(result.rows) == 1:
         row = result.rows[0]
         for metric in plan.metrics:
