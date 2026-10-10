@@ -13,7 +13,7 @@ import Brand from './components/ui/Brand'
 import { DEFAULT_SETTINGS } from './config/aiPresets'
 import { useViewNavigation } from './lib/useViewNavigation'
 import { cloudRequest, fetchCloudConversation, fetchCloudHistory, mergeCloudHistory, migrateLocalHistory } from './lib/cloudConversations'
-import { createConversation, loadConversations, loadLastAssistant, loadProfile, loadSettings, loadUsage, saveConversations, saveLastAssistant, saveProfile, saveSettings, saveUsage } from './lib/storage'
+import { createConversation, loadConversations, loadLastAssistant, loadProfile, loadSettings, loadUsage, pruneConversationHistory, saveConversations, saveLastAssistant, saveProfile, saveSettings, saveUsage } from './lib/storage'
 import type { AssistantMode, AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UsageRecord, UserSettings } from './types'
 
 const AUTH_TOKEN_KEY = 'maua-ai-auth-token'
@@ -356,11 +356,13 @@ function App() {
     }
 
     try {
+      const recentMessages = pruneConversationHistory([{ ...current, messages: requestMessages }])[0]?.messages ?? []
+      if (!recentMessages.length) throw new Error('Estas mensagens expiraram. Atualize o historico antes de continuar.')
       const response = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         signal: controller.signal,
-        body: JSON.stringify({ messages: requestMessages.slice(-40).map(({ role, content: messageContent }) => ({ role, content: messageContent })), temperature: settings.temperature, max_tokens: settings.maxTokens, thinking: Boolean(health?.supports_thinking && settings.thinking), conversation_id: current.id, assistant: current.assistantMode }),
+        body: JSON.stringify({ messages: recentMessages.slice(-40).map(({ role, content: messageContent }) => ({ role, content: messageContent })), temperature: settings.temperature, max_tokens: settings.maxTokens, thinking: Boolean(health?.supports_thinking && settings.thinking), conversation_id: current.id, assistant: current.assistantMode }),
       })
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { detail?: string } | null

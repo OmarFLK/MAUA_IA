@@ -43,6 +43,7 @@ export type Health = {
   supports_thinking: boolean
   analytics_ready: boolean
   rag_ready?: boolean
+  history_retention_days?: number
 }
 
 export type AvailableModel = {

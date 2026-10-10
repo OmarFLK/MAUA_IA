@@ -1,5 +1,6 @@
 import { apiUrl } from '../api'
 import type { Conversation, ChatMessage } from '../types'
+import { pruneConversationHistory } from './storage'
 
 type RemoteConversation = {
   id: string
@@ -55,7 +56,7 @@ export async function fetchCloudHistory(token: string, signal: AbortSignal): Pro
 export async function migrateLocalHistory(token: string, userId: string, local: Conversation[], signal: AbortSignal) {
   const key = `cmob-ai-cloud-migrated-v1:${userId}`
   try { if (localStorage.getItem(key)) return } catch { /* Cloud history does not require browser storage. */ }
-  for (const conversation of local) {
+  for (const conversation of pruneConversationHistory(local)) {
     const messages = conversation.messages.filter((message) => !message.pending && !message.error && message.content.trim())
     if (!messages.length) continue
     await cloudRequest(token, '/api/conversations/import', 'POST', {

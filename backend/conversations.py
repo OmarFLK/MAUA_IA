@@ -9,7 +9,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.auth import get_current_user
@@ -185,6 +185,7 @@ async def recent_turns(
                 .where(
                     ConversationMessage.conversation_id == conversation.id,
                     ConversationMessage.expires_at > datetime.now(timezone.utc),
+                    ConversationMessage.created_at > datetime.now(timezone.utc) - timedelta(days=settings.semob_memory_retention_days),
                 )
                 .order_by(ConversationMessage.created_at.desc(), ConversationMessage.id.desc())
                 .limit(min(limit, 50))
@@ -207,7 +208,7 @@ async def load_state(
         if not conversation or conversation.assistant_mode != assistant_mode:
             return ConversationState(user_id=user_id, session_id=conversation_id)
         record = await session.get(ConversationStateRecord, conversation.id)
-        if not record:
+        if not record or _as_utc(record.updated_at) <= datetime.now(timezone.utc) - timedelta(days=settings.semob_memory_retention_days):
             return ConversationState(user_id=user_id, session_id=conversation_id)
         return ConversationState.model_validate(record.state_json)
 
@@ -230,14 +231,51 @@ async def save_state(state: ConversationState, assistant_mode: str = "cmob") -> 
             session.add(ConversationStateRecord(conversation_id=conversation.id, state_json=payload))
 
 
-async def purge_expired_turns() -> int:
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
+async def _purge_history(session: AsyncSession, user_id: uuid.UUID | None = None, *, now: datetime | None = None) -> int:
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=settings.semob_memory_retention_days)
+    owned_ids = select(Conversation.id)
+    if user_id is not None:
+        owned_ids = owned_ids.where(Conversation.user_id == user_id)
+    # The age cutoff also covers messages saved under the former 30-day policy.
+    result = await session.execute(delete(ConversationMessage).where(
+        ConversationMessage.conversation_id.in_(owned_ids),
+        or_(ConversationMessage.expires_at <= now, ConversationMessage.created_at <= cutoff),
+    ))
+    await session.execute(delete(ConversationStateRecord).where(
+        ConversationStateRecord.conversation_id.in_(owned_ids), ConversationStateRecord.updated_at <= cutoff,
+    ))
+    empty_old_chats = delete(Conversation).where(
+        Conversation.updated_at <= cutoff,
+        ~select(ConversationMessage.id).where(ConversationMessage.conversation_id == Conversation.id).exists(),
+    )
+    old_markers = delete(UserPreference).where(
+        UserPreference.key.startswith('deleted-chat:'), UserPreference.updated_at <= cutoff,
+    )
+    if user_id is not None:
+        empty_old_chats = empty_old_chats.where(Conversation.user_id == user_id)
+        old_markers = old_markers.where(UserPreference.user_id == user_id)
+    await session.execute(empty_old_chats)
+    await session.execute(old_markers)
+    return result.rowcount or 0
+
+
+async def purge_expired_turns(user_id: uuid.UUID | None = None) -> int:
     async with session_scope() as session:
-        result = await session.execute(
-            delete(ConversationMessage).where(
-                ConversationMessage.expires_at <= datetime.now(timezone.utc)
-            )
-        )
-        return result.rowcount or 0
+        return await _purge_history(session, user_id)
+
+
+async def get_history_session(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AsyncSession:
+    await _purge_history(session, current_user.id)
+    await session.commit()
+    return session
 
 
 def _summary(conversation: Conversation) -> ConversationSummary:
@@ -253,7 +291,7 @@ def _summary(conversation: Conversation) -> ConversationSummary:
 @router.get("/conversations", response_model=list[ConversationSummary])
 async def list_conversations(
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
     limit: int = Query(default=50, ge=1, le=100),
 ) -> list[ConversationSummary]:
     conversations = list(
@@ -275,7 +313,7 @@ async def list_conversations(
 async def create_conversation(
     request: ConversationCreate,
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
 ) -> ConversationSummary:
     public_id = request.id or str(uuid.uuid4())
     if await _find_conversation(session, current_user.id, public_id):
@@ -295,7 +333,7 @@ async def create_conversation(
 @router.get('/conversation-history', response_model=list[ConversationDetail])
 async def conversation_history(
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
     limit: int = Query(default=25, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ) -> list[ConversationDetail]:
@@ -316,22 +354,27 @@ async def conversation_history(
 async def import_conversation(
     request: ConversationImport,
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
 ) -> ConversationSummary | None:
     if sum(len(message.content) + len(message.reasoning or '') for message in request.messages) > 2_000_000:
         raise HTTPException(status_code=413, detail='Conversa muito grande para importar.')
     if await session.get(UserPreference, (current_user.id, _deleted_key(request.id))):
         return None
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=settings.semob_memory_retention_days)
+    messages = [message for message in request.messages if cutoff < _as_utc(message.created_at) <= now]
+    if not messages:
+        return None
     conversation = await _ensure_conversation(session, current_user.id, request.id, request.assistant_mode, request.title)
     existing = list(await session.scalars(select(ConversationMessage).where(
         ConversationMessage.conversation_id == conversation.id).order_by(ConversationMessage.created_at, ConversationMessage.id)))
     # Never overwrite cloud history with an old device's divergent or shorter cache.
-    prefix_matches = len(existing) <= len(request.messages) and all(
+    prefix_matches = len(existing) <= len(messages) and all(
         saved.role == cached.role and saved.content == cached.content
-        for saved, cached in zip(existing, request.messages))
+        for saved, cached in zip(existing, messages))
     if prefix_matches:
         original_count = len(existing)
-        for message in request.messages[len(existing):]:
+        for message in messages[len(existing):]:
             created_at = message.created_at.replace(tzinfo=timezone.utc) if message.created_at.tzinfo is None else message.created_at
             if existing:
                 previous = existing[-1].created_at
@@ -339,10 +382,10 @@ async def import_conversation(
                 created_at = max(created_at, previous + timedelta(microseconds=1))
             record = ConversationMessage(conversation_id=conversation.id, role=message.role,
                 content=message.content, reasoning=message.reasoning, created_at=created_at,
-                expires_at=datetime.now(timezone.utc) + timedelta(days=settings.semob_memory_retention_days))
+                expires_at=_as_utc(message.created_at) + timedelta(days=settings.semob_memory_retention_days))
             session.add(record)
             existing.append(record)
-        if len(request.messages) > original_count:
+        if len(messages) > original_count:
             conversation.updated_at = datetime.now(timezone.utc)
     await session.commit()
     await session.refresh(conversation)
@@ -352,7 +395,7 @@ async def import_conversation(
 @router.post('/conversations/{conversation_id}/clear', status_code=204, response_class=Response)
 async def clear_conversation(
     conversation_id: str, current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
 ) -> Response:
     conversation = await _find_conversation(session, current_user.id, conversation_id)
     if not conversation:
@@ -372,7 +415,7 @@ async def clear_conversation(
 async def rewind_conversation(
     conversation_id: str, request: ConversationRewind,
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
 ) -> Response:
     conversation = await _find_conversation(session, current_user.id, conversation_id)
     if not conversation:
@@ -395,7 +438,7 @@ async def rewind_conversation(
 async def get_conversation(
     conversation_id: str,
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
 ) -> ConversationDetail:
     conversation = await _find_conversation(session, current_user.id, conversation_id)
     if not conversation:
@@ -415,7 +458,7 @@ async def update_conversation(
     conversation_id: str,
     request: ConversationUpdate,
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
 ) -> ConversationSummary:
     conversation = await _find_conversation(session, current_user.id, conversation_id)
     if not conversation:
@@ -435,7 +478,7 @@ async def update_conversation(
 async def delete_conversation(
     conversation_id: str,
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_history_session)],
 ) -> Response:
     conversation = await _find_conversation(session, current_user.id, conversation_id)
     if not conversation:

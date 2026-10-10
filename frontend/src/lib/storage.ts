@@ -6,6 +6,16 @@ const SETTINGS_KEY = 'cmob-ai-settings-v2'
 const PROFILE_KEY = 'cmob-ai-profile-v1'
 const USAGE_KEY = 'cmob-ai-usage-v1'
 const LAST_ASSISTANT_KEY = 'cmob-ai-last-assistant-v1'
+const HISTORY_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000
+
+export function pruneConversationHistory(conversations: Conversation[], now = Date.now()): Conversation[] {
+  const cutoff = now - HISTORY_MAX_AGE_MS
+  return conversations.flatMap((conversation) => {
+    const messages = conversation.messages.filter((message) => Number.isFinite(message.createdAt) && message.createdAt > cutoff)
+    if (!messages.length && (conversation.messages.length || conversation.updatedAt <= cutoff)) return []
+    return [{ ...conversation, messages }]
+  })
+}
 
 export function createConversation(assistantMode: AssistantMode = 'cmob'): Conversation {
   return { id: crypto.randomUUID(), title: 'Nova conversa', assistantMode, messages: [], updatedAt: Date.now() }
@@ -17,11 +27,12 @@ export function loadConversations(userId: string): Conversation[] {
     if (saved) {
       const parsed = JSON.parse(saved) as Conversation[]
       if (Array.isArray(parsed) && parsed.length) {
-        return parsed.map((conversation) => ({
+        const conversations = pruneConversationHistory(parsed.map((conversation) => ({
           ...conversation,
           assistantMode: conversation.assistantMode ?? 'cmob',
           messages: conversation.messages.map((message) => ({ ...message, createdAt: message.createdAt ?? conversation.updatedAt })),
-        }))
+        })))
+        if (conversations.length) return conversations
       }
     }
   } catch {
@@ -31,7 +42,7 @@ export function loadConversations(userId: string): Conversation[] {
 }
 
 export function saveConversations(userId: string, conversations: Conversation[]) {
-  localStorage.setItem(`${CONVERSATIONS_KEY}:${userId}`, JSON.stringify(conversations))
+  localStorage.setItem(`${CONVERSATIONS_KEY}:${userId}`, JSON.stringify(pruneConversationHistory(conversations)))
 }
 
 export function loadSettings(userId: string): UserSettings {

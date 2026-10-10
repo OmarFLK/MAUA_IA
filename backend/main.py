@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from collections.abc import AsyncIterator
 from dataclasses import asdict
 from pathlib import Path
@@ -26,6 +27,7 @@ from backend.conversations import (
     add_turn,
     load_state,
     recent_turns,
+    purge_expired_turns,
     router as conversations_router,
 )
 from backend.models import User
@@ -76,10 +78,28 @@ async def lifespan(_: FastAPI):
     if settings.database_configured:
         try:
             await database.initialize_database(hash_password)
+            await purge_expired_turns()
         except Exception:
             logger.exception("Não foi possível inicializar o banco de dados.")
-    yield
-    await database.close_database()
+    cleanup_task = asyncio.create_task(cleanup_history_periodically()) if database.database_ready else None
+    try:
+        yield
+    finally:
+        if cleanup_task:
+            cleanup_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await cleanup_task
+        await database.close_database()
+
+
+async def cleanup_history_periodically() -> None:
+    while True:
+        await asyncio.sleep(3600)
+        if database.database_ready:
+            try:
+                await purge_expired_turns()
+            except Exception:
+                logger.exception('Nao foi possivel limpar o historico expirado.')
 
 
 app = FastAPI(title="cMob AI - SEMOB", version="1.2.0", lifespan=lifespan)
@@ -113,6 +133,7 @@ async def health() -> dict[str, Any]:
         "supports_thinking": settings.baro_supports_thinking,
         "analytics_ready": settings.semob_database_file.is_file(),
         "rag_ready": settings.semob_rag_file.is_file(),
+        "history_retention_days": settings.semob_memory_retention_days,
     }
 
 
@@ -358,6 +379,7 @@ async def chat(
 ) -> StreamingResponse | JSONResponse:
     question = request.messages[-1].content
     user_id = str(current_user.id)
+    await purge_expired_turns(current_user.id)
     request = await recover_history(request, user_id)
     await remember(user_id, request.conversation_id, "user", question, request.assistant)
     try:

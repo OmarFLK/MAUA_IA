@@ -1,7 +1,7 @@
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,8 +27,14 @@ class Settings(BaseSettings):
     seed_test_password: str = ""
     semob_database_path: str = "data/database/semob.duckdb"
     semob_rag_path: str = "data/database/rag.sqlite"
-    semob_memory_retention_days: int = 30
+    semob_memory_retention_days: int = Field(default=14, ge=1)
     app_environment: str = "production"
+
+    @field_validator('semob_memory_retention_days')
+    @classmethod
+    def cap_history_retention(cls, value: int) -> int:
+        # Older deployments may still have the former 30-day environment value.
+        return min(value, 14)
 
     @property
     def configured(self) -> bool:

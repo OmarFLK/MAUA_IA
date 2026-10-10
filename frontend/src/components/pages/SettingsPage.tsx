@@ -97,8 +97,8 @@ export default function SettingsPage(props: Props) {
             </div>
           </>}
 
-          {props.view === 'settings-memory' && <div className="empty-setting"><BrainCircuit size={24} /><h2>Histórico da conta</h2><span>Armazenamento no servidor</span></div>}
-          {props.view === 'settings-privacy' && <div className="settings-section"><SettingRow title="Histórico da conta" description=""><span className="availability success">Salvo no servidor</span></SettingRow><SettingRow title="Preferências deste dispositivo" description=""><span className="availability success">Armazenamento local</span></SettingRow></div>}
+          {props.view === 'settings-memory' && <div className="empty-setting"><BrainCircuit size={24} /><h2>Histórico da conta</h2><span>Retenção de {props.health?.history_retention_days ?? 14} dias</span></div>}
+          {props.view === 'settings-privacy' && <div className="settings-section"><SettingRow title="Histórico da conta" description=""><span className="availability success">Salvo no servidor</span></SettingRow><SettingRow title="Prazo de retenção" description=""><span>{props.health?.history_retention_days ?? 14} dias</span></SettingRow><SettingRow title="Preferências deste dispositivo" description=""><span className="availability success">Armazenamento local</span></SettingRow></div>}
         </section>
       </div>
     </main>

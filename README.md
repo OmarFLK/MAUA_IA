@@ -126,6 +126,8 @@ Em desenvolvimento, o estado autenticado pode ser inspecionado em `GET /api/debu
 
 Os dados operacionais ficam nas tabelas PostgreSQL `users`, `conversations`, `conversation_messages`, `conversation_states` e `user_preferences`. O backend também fornece `GET /api/ready` para readiness do banco, endpoints de perfil/senha/conta, histórico de conversas e preferências autenticadas.
 
+O historico de ambos os assistentes tem retencao maxima de 14 dias por mensagem. A limpeza fisica ocorre na inicializacao, a cada hora enquanto o backend esta ativo e ao acessar conversas ou enviar mensagens. Mensagens antigas de chats ativos sao removidas; conversas antigas vazias e estados analiticos expirados tambem sao apagados. O cache local nao restaura mensagens expiradas. `SEMOB_MEMORY_RETENTION_DAYS` pode reduzir esse prazo, mas valores legados acima de 14 sao limitados a 14; contas, preferencias e bases publicas SEMOB nao sao apagadas.
+
 Para subir PostgreSQL + backend com Docker:
 
 ```powershell

@@ -1,6 +1,8 @@
 import os
 import json
 import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -399,11 +401,12 @@ async def test_remote_failure_is_not_disguised_as_model_answer(monkeypatch, tmp_
 
 
 def cached_chat(chat_id, contents=('Pergunta do computador', 'Resposta salva')):
+    started = datetime.now(timezone.utc) - timedelta(seconds=len(contents))
     return {
         'id': chat_id, 'title': 'Historico compartilhado', 'assistant_mode': 'cmob',
         'messages': [
             {'role': 'user' if index % 2 == 0 else 'assistant', 'content': content,
-             'created_at': f'2026-10-09T12:00:{index:02d}Z'}
+             'created_at': (started + timedelta(seconds=index)).isoformat()}
             for index, content in enumerate(contents)
         ],
     }
@@ -506,3 +509,179 @@ def test_history_mutations_allow_preflight_from_frontend(client, method):
     assert response.status_code == 200
     assert response.headers['access-control-allow-origin'] == 'http://localhost:5173'
     assert method in response.headers['access-control-allow-methods']
+
+
+def age_test_chat(client, headers, chat_id, ages, *, updated_days=0, state_days=15):
+    from sqlalchemy import select
+    from backend.database import session_scope
+    from backend.models import Conversation, ConversationMessage, ConversationStateRecord
+
+    owner = uuid.UUID(client.get('/api/auth/me', headers=headers).json()['id'])
+
+    async def change_dates():
+        now = datetime.now(timezone.utc)
+        async with session_scope() as session:
+            chat = await session.scalar(select(Conversation).where(Conversation.public_id == chat_id, Conversation.user_id == owner))
+            chat.updated_at = now - timedelta(days=updated_days)
+            messages = list(await session.scalars(select(ConversationMessage).where(
+                ConversationMessage.conversation_id == chat.id).order_by(ConversationMessage.id)))
+            for message, age in zip(messages, ages, strict=True):
+                message.created_at = now - timedelta(days=age)
+                message.expires_at = now + timedelta(days=30)
+            session.add(ConversationStateRecord(conversation_id=chat.id,
+                state_json={'user_id': str(owner), 'session_id': chat_id}, updated_at=now - timedelta(days=state_days)))
+            return chat.id
+    return client.portal.call(change_dates)
+
+
+def test_retention_is_at_most_fourteen_days_even_with_legacy_environment():
+    assert Settings(_env_file=None, jwt_secret=secrets.token_hex(32)).semob_memory_retention_days == 14
+    assert Settings(_env_file=None, jwt_secret=secrets.token_hex(32), semob_memory_retention_days=30).semob_memory_retention_days == 14
+    assert Settings(_env_file=None, jwt_secret=secrets.token_hex(32), semob_memory_retention_days=7).semob_memory_retention_days == 7
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, jwt_secret=secrets.token_hex(32), semob_memory_retention_days=0)
+
+
+def test_active_chat_loses_only_old_messages_and_expired_state(client):
+    from backend.conversations import recent_turns
+    from backend.database import session_scope
+    from backend.models import ConversationMessage, ConversationStateRecord
+    from sqlalchemy import select
+    headers = login_headers(client)
+    payload = cached_chat('active-retention-test', ('Antiga pergunta', 'Antiga resposta', 'Recente pergunta', 'Recente resposta'))
+    payload['assistant_mode'] = 'general'
+    assert client.post('/api/conversations/import', headers=headers, json=payload).status_code == 200
+    chat_id = age_test_chat(client, headers, payload['id'], [15, 15, 1, 1])
+    owner = client.get('/api/auth/me', headers=headers).json()['id']
+    turns = client.portal.call(recent_turns, owner, payload['id'], 12, 'general')
+    assert [turn.content for turn in turns] == ['Recente pergunta', 'Recente resposta']
+    response = client.get('/api/conversations/' + payload['id'], headers=headers)
+    assert response.status_code == 200
+    assert [item['content'] for item in response.json()['messages']] == ['Recente pergunta', 'Recente resposta']
+
+    async def actual_rows():
+        async with session_scope() as session:
+            messages = list(await session.scalars(select(ConversationMessage.content).where(ConversationMessage.conversation_id == chat_id)))
+            state = await session.get(ConversationStateRecord, chat_id)
+            return messages, state
+    messages, state = client.portal.call(actual_rows)
+    assert messages == ['Recente pergunta', 'Recente resposta']
+    assert state is None
+
+
+def test_cleanup_is_owner_scoped_then_global_and_preserves_accounts_preferences(client):
+    from sqlalchemy import select
+    from backend.conversations import purge_expired_turns
+    from backend.database import session_scope
+    from backend.models import Conversation, ConversationMessage, ConversationStateRecord, User, UserPreference
+    headers = login_headers(client)
+    other_login = client.post('/api/auth/login', json={'email': 'bruno@teste.maua.ai', 'password': TEST_PASSWORD}).json()
+    other = {'Authorization': 'Bearer ' + other_login['access_token']}
+    owner = uuid.UUID(client.get('/api/auth/me', headers=headers).json()['id'])
+    ids = []
+    for auth, public_id in [(headers, 'expired-cmob-chat'), (other, 'expired-other-chat')]:
+        payload = cached_chat(public_id)
+        assert client.post('/api/conversations/import', headers=auth, json=payload).status_code == 200
+        ids.append(age_test_chat(client, auth, public_id, [15, 15], updated_days=15))
+    assert client.get('/api/conversation-history', headers=headers).status_code == 200
+
+    async def check_scope_and_seed_preferences():
+        async with session_scope() as session:
+            assert await session.get(Conversation, ids[0]) is None
+            assert await session.get(Conversation, ids[1]) is not None
+            old = datetime.now(timezone.utc) - timedelta(days=15)
+            session.add(UserPreference(user_id=owner, key='retention-test-preference', value='keep', updated_at=old))
+            session.add(UserPreference(user_id=owner, key='deleted-chat:old-expiry-marker', value=True, updated_at=old))
+    client.portal.call(check_scope_and_seed_preferences)
+    assert client.portal.call(purge_expired_turns) == 2
+
+    async def check_deleted_rows():
+        async with session_scope() as session:
+            for chat_id in ids:
+                assert await session.get(Conversation, chat_id) is None
+                assert await session.get(ConversationStateRecord, chat_id) is None
+                assert await session.scalar(select(ConversationMessage.id).where(ConversationMessage.conversation_id == chat_id)) is None
+            assert await session.get(User, owner) is not None
+            assert (await session.get(UserPreference, (owner, 'retention-test-preference'))).value == 'keep'
+            assert await session.get(UserPreference, (owner, 'deleted-chat:old-expiry-marker')) is None
+    client.portal.call(check_deleted_rows)
+    assert client.get('/api/health').json()['history_retention_days'] == 14
+
+
+def test_expired_cache_cannot_restore_history_or_reset_retention(client):
+    from sqlalchemy import select
+    from backend.database import session_scope
+    from backend.models import Conversation, ConversationMessage
+    from backend.conversations import _as_utc
+    headers = login_headers(client)
+    now = datetime.now(timezone.utc)
+    payload = cached_chat('expired-cache-history')
+    for message in payload['messages']:
+        message['created_at'] = (now - timedelta(days=15)).isoformat()
+    assert client.post('/api/conversations/import', headers=headers, json=payload).json() is None
+    assert client.get('/api/conversations/' + payload['id'], headers=headers).status_code == 404
+    payload = cached_chat('valid-aged-cache')
+    for index, message in enumerate(payload['messages']):
+        message['created_at'] = (now - timedelta(days=3) + timedelta(seconds=index)).isoformat()
+    for _ in range(2):
+        assert client.post('/api/conversations/import', headers=headers, json=payload).status_code == 200
+
+    async def check_expiry():
+        async with session_scope() as session:
+            chat = await session.scalar(select(Conversation).where(Conversation.public_id == payload['id']))
+            messages = list(await session.scalars(select(ConversationMessage).where(ConversationMessage.conversation_id == chat.id).order_by(ConversationMessage.id)))
+            assert len(messages) == 2
+            for saved, original in zip(messages, payload['messages'], strict=True):
+                assert _as_utc(saved.expires_at) == datetime.fromisoformat(original['created_at']) + timedelta(days=14)
+    client.portal.call(check_expiry)
+
+
+def test_expiration_boundary_removes_fourteen_day_old_messages(client):
+    from sqlalchemy import select
+    from backend.conversations import _purge_history
+    from backend.database import session_scope
+    from backend.models import Conversation, ConversationMessage
+    headers = login_headers(client)
+    payload = cached_chat('retention-exact-boundary')
+    assert client.post('/api/conversations/import', headers=headers, json=payload).status_code == 200
+    owner = uuid.UUID(client.get('/api/auth/me', headers=headers).json()['id'])
+
+    async def test_boundary():
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=14)
+        async with session_scope() as session:
+            chat = await session.scalar(select(Conversation).where(Conversation.user_id == owner, Conversation.public_id == payload['id']))
+            messages = list(await session.scalars(select(ConversationMessage).where(ConversationMessage.conversation_id == chat.id).order_by(ConversationMessage.id)))
+            for index, message in enumerate(messages):
+                message.created_at = cutoff + timedelta(microseconds=index)
+                message.expires_at = now + timedelta(days=30)
+            await session.flush()
+            assert await _purge_history(session, owner, now=now) == 1
+    client.portal.call(test_boundary)
+
+
+@pytest.mark.anyio
+async def test_periodic_cleanup_retries_after_failure_and_is_cancellable(monkeypatch):
+    import asyncio
+    import backend.main as main
+    sleeps = []
+    cleaned = []
+
+    async def sleep(seconds):
+        sleeps.append(seconds)
+        if len(sleeps) == 3:
+            raise asyncio.CancelledError
+
+    async def cleanup():
+        cleaned.append(True)
+        if len(cleaned) == 1:
+            raise RuntimeError('Temporary database failure')
+        return 0
+
+    monkeypatch.setattr(main.asyncio, 'sleep', sleep)
+    monkeypatch.setattr(main, 'purge_expired_turns', cleanup)
+    monkeypatch.setattr(main.database, 'database_ready', True)
+    with pytest.raises(asyncio.CancelledError):
+        await main.cleanup_history_periodically()
+    assert sleeps == [3600, 3600, 3600]
+    assert len(cleaned) == 2
