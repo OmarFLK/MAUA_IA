@@ -8,6 +8,26 @@
     {
       "source": "/api/:path*",
       "destination": "https://cmob-ai-backend.onrender.com/api/:path*"
+    },
+    {
+      "source": "/history",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/analyses",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/memory",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/settings/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/index.html"
     }
   ]
 }
