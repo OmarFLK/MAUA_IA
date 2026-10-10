@@ -87,7 +87,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 app.include_router(auth_router)
@@ -281,8 +281,8 @@ async def stream_and_remember(
                 if fallback_answer and not answer_parts:
                     fallback_answer = "Não consegui obter a interpretação do modelo agora. Seguem os resultados calculados localmente:\n\n" + fallback_answer
                     yield ndjson({"type": "delta", "content": fallback_answer})
-                    yield ndjson({"type": "done"})
                     await remember(user_id, request.conversation_id, "assistant", fallback_answer, request.assistant)
+                    yield ndjson({"type": "done"})
                     return
                 yield event
                 return

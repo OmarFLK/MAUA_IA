@@ -96,8 +96,8 @@ export default function SettingsPage(props: Props) {
             </div>
           </>}
 
-          {props.view === 'settings-memory' && <div className="empty-setting"><BrainCircuit size={24} /><h2>Memória da conversa</h2><p>O contexto da conversa atual é enviado ao backend durante o chat. As conversas salvas neste dispositivo não são uma memória permanente do modelo.</p><span>Gerenciamento de memória do servidor: Não disponível</span></div>}
-          {props.view === 'settings-privacy' && <div className="settings-section"><SettingRow title="Histórico local" description="As conversas e preferências ficam no armazenamento deste navegador."><span className="availability success">Ativo</span></SettingRow><SettingRow title="Sincronização em nuvem" description="O backend atual não disponibiliza sincronização de conversas."><span className="availability">Não disponível</span></SettingRow><SettingRow title="Exclusão de dados no servidor" description="Não existe um endpoint administrativo exposto para esta ação."><button className="secondary-button" disabled>Não disponível</button></SettingRow></div>}
+          {props.view === 'settings-memory' && <div className="empty-setting"><BrainCircuit size={24} /><h2>Histórico da conta</h2><span>Armazenamento no servidor</span></div>}
+          {props.view === 'settings-privacy' && <div className="settings-section"><SettingRow title="Histórico da conta" description=""><span className="availability success">Salvo no servidor</span></SettingRow><SettingRow title="Preferências deste dispositivo" description=""><span className="availability success">Armazenamento local</span></SettingRow></div>}
         </section>
       </div>
     </main>

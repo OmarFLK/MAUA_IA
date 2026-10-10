@@ -27,6 +27,7 @@ export type ChatMessage = {
 }
 
 export type Conversation = {
+  cloud?: boolean
   id: string
   title: string
   assistantMode: AssistantMode

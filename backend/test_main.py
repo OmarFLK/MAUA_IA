@@ -396,3 +396,113 @@ async def test_remote_failure_is_not_disguised_as_model_answer(monkeypatch, tmp_
     assert "calculados localmente" in events[0]["content"]
     assert "Resultado local" in events[0]["content"]
     assert events[-1]["type"] == "done"
+
+
+def cached_chat(chat_id, contents=('Pergunta do computador', 'Resposta salva')):
+    return {
+        'id': chat_id, 'title': 'Historico compartilhado', 'assistant_mode': 'cmob',
+        'messages': [
+            {'role': 'user' if index % 2 == 0 else 'assistant', 'content': content,
+             'created_at': f'2026-10-09T12:00:{index:02d}Z'}
+            for index, content in enumerate(contents)
+        ],
+    }
+
+
+def test_history_is_shared_between_logins_but_private_to_owner(client):
+    desktop = login_headers(client)
+    mobile = login_headers(client)
+    outsider_login = client.post('/api/auth/login', json={
+        'email': 'bruno@teste.maua.ai', 'password': TEST_PASSWORD})
+    outsider = {'Authorization': f"Bearer {outsider_login.json()['access_token']}"}
+    chat_id = 'cross-device-private'
+    imported = client.post('/api/conversations/import', headers=desktop, json=cached_chat(chat_id))
+    assert imported.status_code == 200
+    desktop_history = client.get('/api/conversation-history', headers=desktop).json()
+    assert desktop_history == client.get('/api/conversation-history', headers=mobile).json()
+    shared = next(item for item in desktop_history if item['id'] == chat_id)
+    assert [message['content'] for message in shared['messages']] == ['Pergunta do computador', 'Resposta salva']
+    assert chat_id not in [item['id'] for item in client.get('/api/conversation-history', headers=outsider).json()]
+    for method, path, payload in [
+        ('get', '', None), ('delete', '', None), ('patch', '', {'title': 'Intruso'}),
+        ('post', '/clear', {}), ('post', '/rewind', {
+            'message_id': shared['messages'][0]['id'], 'last_message_id': shared['messages'][-1]['id']}),
+    ]:
+        kwargs = {} if payload is None else {'json': payload}
+        assert getattr(client, method)(f'/api/conversations/{chat_id}{path}', headers=outsider, **kwargs).status_code == 404
+    assert client.patch(f'/api/conversations/{chat_id}', headers=mobile, json={'title': 'Renomeado no celular'}).status_code == 200
+    assert client.get(f'/api/conversations/{chat_id}', headers=desktop).json()['title'] == 'Renomeado no celular'
+    # The same public id is scoped to its owner, even for imports.
+    assert client.post('/api/conversations/import', headers=outsider, json=cached_chat(chat_id, ('Outra conta',))).status_code == 200
+    assert client.get(f'/api/conversations/{chat_id}', headers=desktop).json()['messages'][0]['content'] == 'Pergunta do computador'
+
+
+def test_legacy_import_is_idempotent_and_never_overwrites_cloud_history(client):
+    headers = login_headers(client)
+    chat_id = 'legacy-cache-import'
+    original = cached_chat(chat_id)
+    for _ in range(2):
+        assert client.post('/api/conversations/import', headers=headers, json=original).status_code == 200
+    extended = cached_chat(chat_id, ('Pergunta do computador', 'Resposta salva', 'Continuacao no celular', 'Nova resposta'))
+    assert client.post('/api/conversations/import', headers=headers, json=extended).status_code == 200
+    for old_cache in [original, cached_chat(chat_id, ('Cache divergente', 'Nao substituir'))]:
+        assert client.post('/api/conversations/import', headers=headers, json=old_cache).status_code == 200
+    messages = client.get(f'/api/conversations/{chat_id}', headers=headers).json()['messages']
+    assert [item['content'] for item in messages] == [item['content'] for item in extended['messages']]
+    assert [item['created_at'] for item in messages] == sorted(item['created_at'] for item in messages)
+
+
+def test_clear_and_delete_cannot_be_undone_by_stale_device_cache(client):
+    headers = login_headers(client)
+    chat_id = 'clear-delete-sync'
+    cache = cached_chat(chat_id)
+    assert client.post('/api/conversations/import', headers=headers, json=cache).status_code == 200
+    assert client.post(f'/api/conversations/{chat_id}/clear', headers=headers).status_code == 204
+    assert client.post('/api/conversations/import', headers=headers, json=cache).json() is None
+    assert client.get(f'/api/conversations/{chat_id}', headers=headers).json()['messages'] == []
+    # A cleared chat is still usable for a new turn.
+    response = client.post('/api/chat', headers=headers, json={
+        'conversation_id': chat_id, 'messages': [{'role': 'user', 'content': 'Qual a receita de bolo?'}]})
+    assert response.status_code == 200
+    assert len(client.get(f'/api/conversations/{chat_id}', headers=headers).json()['messages']) == 2
+    assert client.delete(f'/api/conversations/{chat_id}', headers=headers).status_code == 204
+    assert client.post('/api/conversations/import', headers=headers, json=cache).json() is None
+    assert client.get(f'/api/conversations/{chat_id}', headers=headers).status_code == 404
+    assert client.post('/api/conversations', headers=headers, json={'id': chat_id}).status_code == 409
+    assert not any(key.startswith('deleted-chat:') for key in client.get('/api/preferences', headers=headers).json())
+    assert client.put('/api/preferences', headers=headers, json={'values': {'deleted-chat:reserved': False}}).status_code == 422
+
+
+def test_regeneration_replaces_cloud_turn_and_detects_other_device_updates(client):
+    headers = login_headers(client)
+    chat_id = 'rewind-shared-chat'
+    cache = cached_chat(chat_id, ('Pergunta um', 'Resposta um', 'Pergunta dois', 'Resposta dois'))
+    assert client.post('/api/conversations/import', headers=headers, json=cache).status_code == 200
+    messages = client.get(f'/api/conversations/{chat_id}', headers=headers).json()['messages']
+    rewind = {'message_id': messages[2]['id'], 'last_message_id': messages[-1]['id']}
+    assert client.post(f'/api/conversations/{chat_id}/rewind', headers=headers, json={**rewind, 'last_message_id': messages[0]['id']}).status_code == 409
+    assert len(client.get(f'/api/conversations/{chat_id}', headers=headers).json()['messages']) == 4
+    assert client.post(f'/api/conversations/{chat_id}/rewind', headers=headers, json=rewind).status_code == 204
+    assert [item['content'] for item in client.get(f'/api/conversations/{chat_id}', headers=headers).json()['messages']] == ['Pergunta um', 'Resposta um']
+
+
+def test_history_pagination_is_stable_and_requires_authentication(client):
+    assert client.get('/api/conversation-history').status_code == 401
+    headers = login_headers(client)
+    first = client.get('/api/conversation-history?limit=1', headers=headers).json()
+    second = client.get('/api/conversation-history?limit=1&offset=1', headers=headers).json()
+    assert len(first) == len(second) == 1
+    assert first[0]['id'] != second[0]['id']
+    assert client.get('/api/conversation-history?offset=10000', headers=headers).json() == []
+    assert client.get('/api/conversation-history?limit=51', headers=headers).status_code == 422
+
+
+@pytest.mark.parametrize('method', ['PATCH', 'DELETE', 'PUT'])
+def test_history_mutations_allow_preflight_from_frontend(client, method):
+    response = client.options('/api/conversations/example', headers={
+        'Origin': 'http://localhost:5173', 'Access-Control-Request-Method': method,
+        'Access-Control-Request-Headers': 'authorization,content-type',
+    })
+    assert response.status_code == 200
+    assert response.headers['access-control-allow-origin'] == 'http://localhost:5173'
+    assert method in response.headers['access-control-allow-methods']
