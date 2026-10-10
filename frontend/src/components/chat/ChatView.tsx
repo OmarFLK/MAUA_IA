@@ -9,7 +9,6 @@ import {
   Check,
   Clipboard,
   Code2,
-  Menu,
   RotateCcw,
   Send,
   Sparkles,
@@ -24,8 +23,9 @@ import type { AuthUser } from '../../AuthScreen'
 import type { AssistantMode, AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UserSettings } from '../../types'
 import ModelStatus from '../ai/ModelStatus'
 import UserAvatar from '../ui/UserAvatar'
+import WorkspaceHeader, { type WorkspaceNavigationProps } from '../ui/WorkspaceHeader'
 
-type Props = {
+type Props = WorkspaceNavigationProps & {
   conversation: Conversation
   user: AuthUser
   profile: LocalProfile
@@ -38,7 +38,6 @@ type Props = {
   isStreaming: boolean
   copiedId: string | null
   assistantMode: AssistantMode
-  onOpenMenu: () => void
   onInput: (value: string) => void
   onSend: (content?: string) => void
   onStop: () => void
@@ -92,14 +91,10 @@ export default function ChatView(props: Props) {
 
   return (
     <main className="workspace chat-workspace">
-      <header className="workspace-header chat-header">
-        <button className="icon-button mobile-menu" onClick={props.onOpenMenu} aria-label="Abrir menu"><Menu size={20} /></button>
-        <div className="header-title"><strong>{props.conversation.title}</strong><span>{isCMob ? 'CMob AI · Assistente de mobilidade urbana' : 'Gemma Livre · Assistente de propósito geral'}</span></div>
-        <div className="header-actions">
-          {props.conversation.messages.length > 0 && <button className="icon-button" onClick={props.onClear} aria-label="Limpar conversa" title="Limpar conversa"><Trash2 size={17} /></button>}
-          <ModelStatus health={props.health} models={props.models} connectionError={props.connectionError} assistantMode={props.assistantMode} onAssistantChange={props.onAssistantChange} />
-        </div>
-      </header>
+      <WorkspaceHeader className="chat-header" title={props.conversation.title} subtitle={isCMob ? 'CMob AI · Assistente de mobilidade urbana' : 'Gemma Livre · Assistente de propósito geral'} onBack={props.onBack} onOpenMenu={props.onOpenMenu}>
+        {props.conversation.messages.length > 0 && <button className="icon-button" onClick={props.onClear} aria-label="Limpar conversa" title="Limpar conversa"><Trash2 size={17} /></button>}
+        <ModelStatus health={props.health} models={props.models} connectionError={props.connectionError} assistantMode={props.assistantMode} onAssistantChange={props.onAssistantChange} />
+      </WorkspaceHeader>
 
       <section className={`chat-scroll ${props.conversation.messages.length === 0 ? 'is-empty' : ''}`}>
         {props.conversation.messages.length === 0 ? (

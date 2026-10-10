@@ -1,8 +1,9 @@
 import { Clock3, MessageSquareText, Pencil, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { AssistantMode, Conversation, UserSettings } from '../../types'
+import WorkspaceHeader, { type WorkspaceNavigationProps } from '../ui/WorkspaceHeader'
 
-type Props = {
+type Props = WorkspaceNavigationProps & {
   conversations: Conversation[]
   assistantMode: AssistantMode
   settings: UserSettings
@@ -11,7 +12,7 @@ type Props = {
   onRename: (id: string, title: string) => void
 }
 
-export default function HistoryPage({ conversations, assistantMode, settings, onOpen, onDelete, onRename }: Props) {
+export default function HistoryPage({ conversations, assistantMode, settings, onOpen, onDelete, onRename, onBack, onOpenMenu }: Props) {
   const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(false)
   const visible = useMemo(
@@ -26,7 +27,7 @@ export default function HistoryPage({ conversations, assistantMode, settings, on
 
   return (
     <main className="workspace page-workspace">
-      <header className="workspace-header"><div className="header-title"><strong>Histórico</strong><span>{visible.length} {visible.length === 1 ? 'conversa exibida' : 'conversas exibidas'}</span></div></header>
+      <WorkspaceHeader title="Histórico" subtitle={`${visible.length} ${visible.length === 1 ? 'conversa exibida' : 'conversas exibidas'}`} onBack={onBack} onOpenMenu={onOpenMenu} />
       <section className="content-page">
         <div className="page-heading">
           <div><p className="section-kicker">CONVERSAS</p><h1>Seu histórico</h1></div>
@@ -40,7 +41,7 @@ export default function HistoryPage({ conversations, assistantMode, settings, on
             <article className="conversation-list-item" key={conversation.id}>
               <button className="conversation-open" onClick={() => onOpen(conversation.id)}>
                 <span className="list-icon"><MessageSquareText size={17} /></span>
-                <span><strong>{conversation.title}</strong><small>{conversation.messages.length} mensagens · Atualizada em {format(conversation.updatedAt)}</small></span>
+                <span className="conversation-copy"><strong>{conversation.title}</strong><small>{conversation.messages.length} mensagens · Atualizada em {format(conversation.updatedAt)}</small></span>
                 <span className={`assistant-tag ${conversation.assistantMode}`}>{conversation.assistantMode === 'cmob' ? 'CMob AI' : 'Gemma Livre'}</span>
               </button>
               <div className="row-actions"><button onClick={() => { const title = window.prompt('Novo título', conversation.title); if (title?.trim()) onRename(conversation.id, title.trim()) }} aria-label="Renomear"><Pencil size={15} /></button><button onClick={() => onDelete(conversation.id)} aria-label="Excluir"><Trash2 size={15} /></button></div>

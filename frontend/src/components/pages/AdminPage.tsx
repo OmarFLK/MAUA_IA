@@ -2,8 +2,9 @@ import { Activity, Cpu, Gauge, Server, ShieldCheck, Timer, Waypoints } from 'luc
 import { modelDisplayName } from '../../lib/models'
 import type { AvailableModel, AppView, Health, UsageRecord, UserSettings } from '../../types'
 import Toggle from '../ui/Toggle'
+import WorkspaceHeader, { type WorkspaceNavigationProps } from '../ui/WorkspaceHeader'
 
-type Props = {
+type Props = WorkspaceNavigationProps & {
   view: AppView
   isAdmin: boolean
   health: Health | null
@@ -22,7 +23,7 @@ function Unavailable({ label }: { label: string }) {
 }
 
 export default function AdminPage(props: Props) {
-  if (!props.isAdmin) return <main className="workspace page-workspace"><section className="access-denied"><ShieldCheck size={30} /><h1>Acesso restrito</h1><p>Esta área exige uma função administrativa informada pelo backend.</p></section></main>
+  if (!props.isAdmin) return <main className="workspace page-workspace"><WorkspaceHeader title="Administração" onBack={props.onBack} onOpenMenu={props.onOpenMenu} /><section className="access-denied"><ShieldCheck size={30} /><h1>Acesso restrito</h1><p>Esta área exige uma função administrativa informada pelo backend.</p></section></main>
 
   const completed = props.usageRecords.filter((record) => record.status === 'success')
   const tokenTotal = completed.reduce((total, record) => total + (record.usage?.total_tokens ?? 0), 0)
@@ -30,7 +31,7 @@ export default function AdminPage(props: Props) {
   const avgTtftRecords = completed.filter((record) => record.ttftMs !== undefined)
   const avgTtft = avgTtftRecords.length ? avgTtftRecords.reduce((total, record) => total + (record.ttftMs ?? 0), 0) / avgTtftRecords.length : null
 
-  return <main className="workspace page-workspace"><header className="workspace-header"><div className="header-title"><strong>Administração</strong><span>Diagnóstico baseado nas informações disponíveis</span></div></header><section className="content-page"><div className="page-heading"><div><p className="section-kicker">ADMIN</p><h1>{props.view === 'admin-model' ? 'Modelo e runtime' : props.view === 'admin-ai' ? 'Configurações da IA' : 'Monitoramento'}</h1></div><span className="data-scope">Dados locais e da API</span></div>
+  return <main className="workspace page-workspace"><WorkspaceHeader title="Administração" subtitle="Diagnóstico baseado nas informações disponíveis" onBack={props.onBack} onOpenMenu={props.onOpenMenu} /><section className="content-page"><div className="page-heading"><div><p className="section-kicker">ADMIN</p><h1>{props.view === 'admin-model' ? 'Modelo e runtime' : props.view === 'admin-ai' ? 'Configurações da IA' : 'Monitoramento'}</h1></div><span className="data-scope">Dados locais e da API</span></div>
     {props.view === 'admin-overview' && <>
       <div className="metrics-grid"><Metric icon={Server} label="API" value={props.health?.status ?? 'Não disponível'} detail="Informado por /api/health" /><Metric icon={Activity} label="Requisições" value={String(props.usageRecords.length)} detail="Neste navegador" /><Metric icon={Waypoints} label="Tokens" value={tokenTotal ? tokenTotal.toLocaleString('pt-BR') : 'Não disponível'} detail="Neste navegador" /><Metric icon={Timer} label="Latência média" value={avgLatency ? `${(avgLatency / 1000).toFixed(2)} s` : 'Não disponível'} detail="Neste navegador" /><Metric icon={Gauge} label="Tempo até resposta" value={avgTtft ? `${(avgTtft / 1000).toFixed(2)} s` : 'Não disponível'} detail="Neste navegador" /></div>
       <div className="admin-columns"><div className="admin-panel"><h2>Serviços</h2><div className="technical-row"><span>Modelo remoto</span><strong>{props.health?.configured ? 'Conectado' : 'Indisponível'}</strong></div><div className="technical-row"><span>Base analítica</span><strong>{props.health?.analytics_ready ? 'Pronta' : 'Indisponível'}</strong></div><div className="technical-row"><span>Banco da aplicação</span><strong>{props.health?.database_ready ? 'Pronto' : 'Indisponível'}</strong></div></div><div className="admin-panel"><h2>Infraestrutura</h2><Unavailable label="Uso de GPU" /><Unavailable label="Uso de VRAM" /><Unavailable label="Uso de RAM do servidor" /><Unavailable label="Uptime" /></div></div>

@@ -1,13 +1,14 @@
 import type { ChangeEvent } from 'react'
-import { BrainCircuit, ChevronLeft, MessageSquareText, Palette, RotateCcw, Shield, SlidersHorizontal, Upload, UserRound } from 'lucide-react'
+import { BrainCircuit, MessageSquareText, Palette, RotateCcw, Shield, SlidersHorizontal, Upload, UserRound } from 'lucide-react'
 import type { AuthUser } from '../../AuthScreen'
 import { AI_PRESETS, DEFAULT_SETTINGS, MAX_OUTPUT_OPTIONS } from '../../config/aiPresets'
 import type { AppView, Health, LocalProfile, UserSettings } from '../../types'
 import InfoTip from '../ui/InfoTip'
 import Toggle from '../ui/Toggle'
 import UserAvatar from '../ui/UserAvatar'
+import WorkspaceHeader, { type WorkspaceNavigationProps } from '../ui/WorkspaceHeader'
 
-type Props = {
+type Props = WorkspaceNavigationProps & {
   view: AppView
   user: AuthUser
   profile: LocalProfile
@@ -48,7 +49,7 @@ export default function SettingsPage(props: Props) {
   const title = tabs.find((tab) => tab.id === props.view)?.label ?? 'Configurações'
   return (
     <main className="workspace page-workspace">
-      <header className="workspace-header"><button className="icon-button desktop-hidden" onClick={() => props.onNavigate('chat')} aria-label="Voltar"><ChevronLeft size={20} /></button><div className="header-title"><strong>Configurações</strong><span>Preferências da sua experiência</span></div></header>
+      <WorkspaceHeader title="Configurações" subtitle="Preferências da sua experiência" onBack={props.onBack} onOpenMenu={props.onOpenMenu} />
       <div className="settings-layout">
         <nav className="settings-tabs" aria-label="Categorias de configuração">
           {tabs.map(({ id, label, icon: Icon }) => <button key={id} className={props.view === id ? 'active' : ''} onClick={() => props.onNavigate(id)}><Icon size={17} />{label}</button>)}

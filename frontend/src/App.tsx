@@ -11,10 +11,10 @@ import { AnalysesPage, MemoryPage } from './components/pages/WorkspacePages'
 import Sidebar from './components/sidebar/Sidebar'
 import Brand from './components/ui/Brand'
 import { DEFAULT_SETTINGS } from './config/aiPresets'
-import { pathFor, viewFromPath } from './lib/routing'
+import { useViewNavigation } from './lib/useViewNavigation'
 import { cloudRequest, fetchCloudConversation, fetchCloudHistory, mergeCloudHistory, migrateLocalHistory } from './lib/cloudConversations'
 import { createConversation, loadConversations, loadLastAssistant, loadProfile, loadSettings, loadUsage, saveConversations, saveLastAssistant, saveProfile, saveSettings, saveUsage } from './lib/storage'
-import type { AppView, AssistantMode, AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UsageRecord, UserSettings } from './types'
+import type { AssistantMode, AvailableModel, ChatMessage, Conversation, Health, LocalProfile, MessageFeedback, Usage, UsageRecord, UserSettings } from './types'
 
 const AUTH_TOKEN_KEY = 'maua-ai-auth-token'
 
@@ -22,7 +22,7 @@ function App() {
   const initialConversation = useMemo(() => createConversation(), [])
   const [conversations, setConversations] = useState<Conversation[]>([initialConversation])
   const [activeId, setActiveId] = useState(initialConversation.id)
-  const [view, setView] = useState<AppView>(() => viewFromPath(window.location.pathname))
+  const { view, navigate, goBack } = useViewNavigation()
   const [token, setToken] = useState(() => sessionStorage.getItem(AUTH_TOKEN_KEY) ?? '')
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authReady, setAuthReady] = useState(() => !sessionStorage.getItem(AUTH_TOKEN_KEY))
@@ -70,12 +70,6 @@ function App() {
     setSettings(savedSettings)
     setUsageRecords(loadUsage(authenticatedUser.id))
   }
-
-  useEffect(() => {
-    const popstate = () => setView(viewFromPath(window.location.pathname))
-    window.addEventListener('popstate', popstate)
-    return () => window.removeEventListener('popstate', popstate)
-  }, [])
 
   useEffect(() => {
     fetch(apiUrl('/api/health'))
@@ -183,10 +177,11 @@ function App() {
     document.documentElement.dataset.chatFont = settings.chatFontSize
   }, [settings.theme, settings.density, settings.chatFontSize])
 
-  function navigate(nextView: AppView) {
-    setView(nextView)
-    const path = pathFor(nextView)
-    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+  function back() {
+    setMobileOpen(false)
+    if (goBack()) return
+    if (view !== 'chat') navigate('chat', true)
+    else setNeedsAssistantChoice(true)
   }
 
   function updateConversation(id: string, updater: (conversation: Conversation) => Conversation) {
@@ -443,12 +438,13 @@ function App() {
   if (needsAssistantChoice) return <AssistantWelcome onSelect={switchAssistant} />
 
   let content: ReactNode
-  if (view === 'chat') content = <ChatView conversation={activeConversation} user={user} profile={profile} health={health} models={models} connectionError={connectionError} input={input} usage={latestUsage} settings={settings} isStreaming={isStreaming} copiedId={copiedId} assistantMode={assistantMode} onOpenMenu={() => setMobileOpen(true)} onInput={setInput} onSend={(value) => void sendMessage(value)} onStop={() => abortRef.current?.abort()} onCopy={(message) => void copyMessage(message)} onRegenerate={(id) => void sendMessage(undefined, id)} onFeedback={feedback} onClear={clearConversation} onAssistantChange={switchAssistant} />
-  else if (view === 'history') content = <HistoryPage conversations={conversations} assistantMode={assistantMode} settings={settings} onOpen={selectConversation} onDelete={deleteConversation} onRename={renameConversation} />
-  else if (view === 'analyses') content = <AnalysesPage conversations={assistantConversations} onOpen={selectConversation} />
-  else if (view === 'memory') content = <MemoryPage conversations={assistantConversations} />
-  else if (view.startsWith('settings-')) content = <SettingsPage view={view} user={user} profile={profile} settings={settings} health={health} onNavigate={navigate} onProfile={setProfile} onSettings={setSettings} />
-  else content = <AdminPage view={view} isAdmin={isAdmin} health={health} models={models} usageRecords={usageRecords} settings={settings} onSettings={setSettings} />
+  const navigation = { onBack: back, onOpenMenu: () => setMobileOpen(true) }
+  if (view === 'chat') content = <ChatView {...navigation} conversation={activeConversation} user={user} profile={profile} health={health} models={models} connectionError={connectionError} input={input} usage={latestUsage} settings={settings} isStreaming={isStreaming} copiedId={copiedId} assistantMode={assistantMode} onInput={setInput} onSend={(value) => void sendMessage(value)} onStop={() => abortRef.current?.abort()} onCopy={(message) => void copyMessage(message)} onRegenerate={(id) => void sendMessage(undefined, id)} onFeedback={feedback} onClear={clearConversation} onAssistantChange={switchAssistant} />
+  else if (view === 'history') content = <HistoryPage {...navigation} conversations={conversations} assistantMode={assistantMode} settings={settings} onOpen={selectConversation} onDelete={deleteConversation} onRename={renameConversation} />
+  else if (view === 'analyses') content = <AnalysesPage {...navigation} conversations={assistantConversations} onOpen={selectConversation} />
+  else if (view === 'memory') content = <MemoryPage {...navigation} conversations={assistantConversations} />
+  else if (view.startsWith('settings-')) content = <SettingsPage {...navigation} view={view} user={user} profile={profile} settings={settings} health={health} onNavigate={navigate} onProfile={setProfile} onSettings={setSettings} />
+  else content = <AdminPage {...navigation} view={view} isAdmin={isAdmin} health={health} models={models} usageRecords={usageRecords} settings={settings} onSettings={setSettings} />
 
   return <div className={`app-shell-v2 assistant-${assistantMode}`}>{mobileOpen && <button className="sidebar-scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}<Sidebar view={view} conversations={assistantConversations} activeId={activeId} user={user} profile={profile} isAdmin={isAdmin} mobileOpen={mobileOpen} assistantMode={assistantMode} onCloseMobile={() => setMobileOpen(false)} onNavigate={navigate} onNewChat={newConversation} onSelectConversation={selectConversation} onDeleteConversation={deleteConversation} onRenameConversation={renameConversation} onLogout={logout} /><div className="cloud-workspace">{syncError && <div className="history-sync-error" role="alert"><span>{syncError}</span><button className="icon-button" title="Tentar sincronizar novamente" aria-label="Tentar sincronizar novamente" onClick={() => setRefreshKey((key) => key + 1)}><RefreshCw size={17} /></button></div>}{content}</div></div>
 }
