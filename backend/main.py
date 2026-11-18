@@ -31,6 +31,7 @@ from backend.conversations import (
     router as conversations_router,
 )
 from backend.models import User
+from backend.integration import router as integration_router
 from semob_ai.analytics import AnalyticsExecutor, QueryPlan
 from semob_ai.analytics.catalog import TABLES
 from semob_ai.conversation.service import ConversationEngine
@@ -112,6 +113,7 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.include_router(conversations_router)
+app.include_router(integration_router)
 
 
 def configuration_error() -> JSONResponse:

@@ -6,6 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from semob_ai.analytics import AnalyticsExecutor
+from semob_ai.analytics.query_plan import DatePeriod
 from semob_ai.analytics.formatting import format_breakdown, format_comparison, format_projection, format_result
 from semob_ai.conversation.models import ConversationResponse, ConversationState, RelevantInteraction
 from semob_ai.conversation.resolver import FollowUpResolver, _subject
@@ -35,13 +36,14 @@ class ConversationEngine:
         self, user_id: str, session_id: str, message: str,
         history: list[dict[str, str]] | None = None,
         state: ConversationState | None = None,
+        default_period: DatePeriod | None = None,
     ) -> ConversationResponse:
         state_is_external = state is not None
         if state is None:
             if not self.sessions:
                 raise RuntimeError("O armazenamento de estado não foi configurado.")
             state = self.sessions.load(user_id, session_id, assistant_mode="cmob")
-        resolution = self.resolver.resolve(message, state, history)
+        resolution = self.resolver.resolve(message, state, history, default_period=default_period)
         scope = check_scope(
             message,
             context_active=state.has_analytics_context,

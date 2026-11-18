@@ -262,6 +262,7 @@ class FollowUpResolver:
     def resolve(
         self, message: str, state: ConversationState,
         history: list[dict[str, str]] | None = None,
+        *, default_period: DatePeriod | None = None,
     ) -> ResolvedRequest:
         question = _plain(message).strip()
         if is_conversational_message(message):
@@ -289,6 +290,8 @@ class FollowUpResolver:
 
         if not is_follow_up or base is None:
             plan = plan_question(message)
+            if plan and default_period and not plan.period.start and not plan.period.end:
+                plan = _copy_plan(plan, period=default_period)
             comparison = None
             mode = "breakdown" if plan and plan.intent == "breakdown" else "standard"
             if plan:

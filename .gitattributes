@@ -1,0 +1,5 @@
+# Snapshot checksums refer to canonical LF bytes on every developer OS.
+data/public/*_daily.csv text eol=lf
+data/public/departures_by_line_hour.csv text eol=lf
+data/public/trip_exceptions.csv text eol=lf
+data/public/trips.csv text eol=lf

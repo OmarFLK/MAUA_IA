@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     semob_rag_path: str = "data/database/rag.sqlite"
     semob_memory_retention_days: int = Field(default=14, ge=1)
     app_environment: str = "production"
+    # Only a digest is stored by the provider; the raw key belongs to SEMOB.
+    semob_integration_key_sha256: str = Field(default="", pattern=r"^$|^[a-f0-9]{64}$")
 
     @field_validator('semob_memory_retention_days')
     @classmethod

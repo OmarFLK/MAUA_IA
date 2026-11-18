@@ -17,6 +17,8 @@ services:
         value: "10"
       - key: BARO_API_KEY
         sync: false
+      - key: SEMOB_INTEGRATION_KEY_SHA256
+        sync: false
       - key: BARO_BASE_URL
         value: https://ia.maua.br/api/v1
       - key: BARO_MODEL

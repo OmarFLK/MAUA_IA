@@ -15,6 +15,7 @@ TEST_PASSWORD = secrets.token_urlsafe(24)
 os.environ["SEED_TEST_PASSWORD"] = TEST_PASSWORD
 os.environ["SEED_TEST_USERS"] = "true"
 os.environ["BARO_API_KEY"] = ""
+os.environ["APP_ENVIRONMENT"] = "development"
 
 from backend.main import ChatRequest, Message, app, completion_payload  # noqa: E402
 from backend.config import Settings  # noqa: E402
@@ -47,6 +48,115 @@ def test_health_exposes_safe_configuration_only(client: TestClient):
     readiness = client.get("/api/ready")
     assert readiness.status_code == 200
     assert readiness.json()["database_ready"] is True
+
+
+@pytest.fixture()
+def integration_headers(monkeypatch):
+    import hashlib
+    from backend import integration, main
+    token = "maua_semob_" + secrets.token_urlsafe(48)
+    monkeypatch.setattr(main.settings, "semob_integration_key_sha256", hashlib.sha256(token.encode()).hexdigest())
+    integration._limits.clear()
+    return {"Authorization": "Bearer " + token}
+
+
+def test_integration_requires_dedicated_key_and_cannot_access_accounts(client, integration_headers, monkeypatch):
+    from backend import main
+    assert client.get('/api/integrations/semob/status').status_code == 401
+    assert client.get('/api/integrations/semob/status', headers=login_headers(client)).status_code == 401
+    assert client.get('/api/auth/me', headers=integration_headers).status_code == 401
+    assert client.post('/api/chat', headers=integration_headers, json={'messages': [{'role': 'user', 'content': 'Olá'}], 'assistant': 'general'}).status_code == 401
+    status_response = client.get('/api/integrations/semob/status', headers=integration_headers)
+    assert status_response.status_code == 200
+    assert status_response.json()['assistant'] == 'cmob'
+    assert integration_headers['Authorization'] not in status_response.text
+    monkeypatch.setattr(main.settings, 'semob_integration_key_sha256', '')
+    assert client.get('/api/integrations/semob/status', headers=integration_headers).status_code == 503
+
+
+def test_integration_preserves_calculations_period_sources_and_isolates_users(client, integration_headers, monkeypatch):
+    import hashlib
+    from backend import main
+    async def forbidden(*args, **kwargs):
+        raise AssertionError('Verified analytical results must bypass model rewriting')
+        yield ''
+    monkeypatch.setattr(main, 'stream_completion', forbidden)
+    payload = {'message': 'Quantas viagens foram realizadas?', 'user_id': 'semob-user-a', 'conversation_id': 'presentation', 'context': {'period': '2026-08'}}
+    response = client.post('/api/integrations/semob/chat', headers=integration_headers, json=payload)
+    assert response.status_code == 200, response.text
+    assert response.json()['kind'] == 'analytics'
+    assert response.json()['assistant'] == 'cmob'
+    assert 'CMob: operation_daily' in response.json()['sources']
+    assert '2026-08-01' in response.json()['answer']
+    session_id = 'semob:' + hashlib.sha256(b'presentation:2026-08').hexdigest()
+    owner = str(uuid.uuid5(uuid.NAMESPACE_URL, 'maua-ia:semob:semob-user-a'))
+    other = str(uuid.uuid5(uuid.NAMESPACE_URL, 'maua-ia:semob:semob-user-b'))
+    state = client.portal.call(main.load_state, owner, session_id, 'cmob')
+    assert str(state.time_range.start) == '2026-08-01'
+    assert not client.portal.call(main.load_state, other, session_id, 'cmob').has_analytics_context
+    assert not client.portal.call(main.load_state, owner, 'unrelated-chat', 'cmob').has_analytics_context
+    # An explicit date in the question wins over the dashboard filter.
+    payload['message'] = 'Quantas viagens foram realizadas em julho de 2026?'
+    response = client.post('/api/integrations/semob/chat', headers=integration_headers, json=payload)
+    assert response.status_code == 200
+    state = client.portal.call(main.load_state, owner, session_id, 'cmob')
+    assert str(state.time_range.start) == '2026-07-01'
+
+
+def test_integration_uses_real_rag_and_refuses_general_mode(client, integration_headers, monkeypatch):
+    from backend import main
+    captured = []
+    monkeypatch.setattr(main.settings, 'baro_api_key', 'test-provider-key')
+    async def completion(request, context=''):
+        captured.append((request, context))
+        yield main.ndjson({'type': 'delta', 'content': 'Definição baseada nos documentos autorizados.'})
+        yield main.ndjson({'type': 'done'})
+    monkeypatch.setattr(main, 'stream_completion', completion)
+    payload = {'message': 'O que é quilometragem improdutiva no transporte público?', 'user_id': 'rag-test', 'context': {'period': '2026-08'}, 'preferences': {'assistant': 'standard'}}
+    response = client.post('/api/integrations/semob/chat', headers=integration_headers, json=payload)
+    assert response.status_code == 200, response.text
+    assert captured[0][0].assistant.value == 'cmob'
+    assert '#trecho-' in captured[0][1]
+    assert response.json()['sources']
+    assert all(not source.startswith('/') for source in response.json()['sources'])
+    assert client.post('/api/integrations/semob/chat', headers=integration_headers, json={**payload, 'assistant': 'general'}).status_code == 422
+    assert client.post('/api/integrations/semob/chat', headers=integration_headers, json={**payload, 'message': ' '}).status_code == 422
+
+
+def test_integration_reports_missing_rag_and_model_failure_without_fabricating(client, integration_headers, monkeypatch, tmp_path):
+    from backend import main
+    payload = {'message': 'O que é quilometragem improdutiva?', 'user_id': 'provider-failure'}
+    monkeypatch.setattr(main.settings, 'baro_api_key', 'test-key')
+    async def failed(*args, **kwargs):
+        yield main.ndjson({'type': 'error', 'message': 'test failure'})
+    monkeypatch.setattr(main, 'stream_completion', failed)
+    assert client.post('/api/integrations/semob/chat', headers=integration_headers, json=payload).status_code == 502
+    monkeypatch.setattr(main.settings, 'semob_rag_path', str(tmp_path / 'missing.sqlite'))
+    assert client.post('/api/integrations/semob/chat', headers=integration_headers, json=payload).status_code == 503
+
+
+def test_integration_key_generation_is_scoped_and_rate_limited(client, integration_headers):
+    import hashlib
+    import time
+    from backend import integration
+    from scripts.create_integration_key import generate_credentials
+    credentials = generate_credentials()
+    assert credentials['maua_ia']['SEMOB_INTEGRATION_KEY_SHA256'] == hashlib.sha256(credentials['semob']['SEMOB_AI_API_KEY'].encode()).hexdigest()
+    assert credentials['semob']['SEMOB_AI_API_KEY'] not in json.dumps(credentials['maua_ia'])
+    owner = hashlib.sha256(b'limited-user').hexdigest()
+    integration._limits[owner] = (20, time.monotonic() + 60)
+    response = client.post('/api/integrations/semob/chat', headers=integration_headers, json={'message': 'Olá', 'user_id': 'limited-user'})
+    assert response.status_code == 429
+    assert response.headers['retry-after'] == '60'
+
+
+def test_integration_context_validates_selected_date_range():
+    from backend.integration import IntegrationContext
+    context = IntegrationContext.model_validate({'period': '2026-08', 'filters': {'from': '2026-08-04', 'to': '2026-08-09'}})
+    assert str(context.date_period().start) == '2026-08-04'
+    assert str(context.date_period().end) == '2026-08-09'
+    with pytest.raises(ValueError):
+        IntegrationContext.model_validate({'period': '2026-08', 'filters': {'from': '2026-09-04'}})
 
 
 def test_render_postgres_url_is_normalized_for_asyncpg():

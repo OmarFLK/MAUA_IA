@@ -1,5 +1,7 @@
 # Analista SEMOB com Gemma via Barô
 
+Integração do chat com o dashboard: [API exclusiva CMob/RAG para o Projeto Integrador SEMOB](docs/SEMOB_INTEGRATION.md).
+
 Dados CMob publicados em [data/public](data/public/README.md). O Docker agora
 reconstroi o DuckDB e o RAG no Render. [Dados, RAG, fine-tuning e API do futuro
 dashboard](docs/CMOB_DATA_RAG_TRAINING.md) descreve a entrega e os limites:

@@ -10,6 +10,7 @@ from semob_ai.conversation.models import ConversationResponse
 from semob_ai.conversation.service import ConversationEngine
 from semob_ai.guardrails.scope import is_conversational_message
 from semob_ai.rag import LocalRagIndex
+from semob_ai.analytics.query_plan import DatePeriod
 
 
 class AssistantMode(str, Enum):
@@ -25,6 +26,7 @@ class PreparedAssistantResponse:
     llm_context: str = ""
     local_only: bool = False
     conversation: ConversationResponse | None = None
+    sources: tuple[str, ...] = ()
 
 
 class AssistantPipeline(Protocol):
@@ -37,6 +39,7 @@ class AssistantPipeline(Protocol):
         conversation_id: str,
         question: str,
         history: list[dict[str, str]],
+        default_period: DatePeriod | None = None,
     ) -> PreparedAssistantResponse: ...
 
 
@@ -56,6 +59,7 @@ class CMobAssistant:
         conversation_id: str,
         question: str,
         history: list[dict[str, str]],
+        default_period: DatePeriod | None = None,
     ) -> PreparedAssistantResponse:
         state = await load_state(user_id, conversation_id, assistant_mode=self.mode.value)
         try:
@@ -65,6 +69,7 @@ class CMobAssistant:
                 question,
                 history=history,
                 state=state,
+                default_period=default_period,
             )
         except FileNotFoundError:
             return PreparedAssistantResponse(
@@ -118,6 +123,7 @@ class CMobAssistant:
             answer=conversation.answer,
             llm_context="\n\n".join(context_parts),
             conversation=conversation,
+            sources=tuple(dict.fromkeys(chunk.source for chunk in chunks)),
         )
 
 
@@ -133,8 +139,9 @@ class GeneralAssistant:
         conversation_id: str,
         question: str,
         history: list[dict[str, str]],
+        default_period: DatePeriod | None = None,
     ) -> PreparedAssistantResponse:
-        del user_id, conversation_id, question, history
+        del user_id, conversation_id, question, history, default_period
         return PreparedAssistantResponse(mode=self.mode, kind="general")
 
 
