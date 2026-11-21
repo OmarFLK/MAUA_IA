@@ -172,8 +172,9 @@ def test_session_state_is_not_shared_with_new_session(engine: ConversationEngine
     isolated = engine.handle("same-user", "session-b", "E julho?")
 
     assert continued.kind == "analytics"
-    assert isolated.kind == "out_of_scope"
+    assert isolated.kind == "conceptual"
     assert isolated.state.previous_query_plan is None
+    assert isolated.llm_context is None
 
 
 def test_explicit_dataset_switch_starts_a_new_topic(engine: ConversationEngine) -> None:
@@ -337,11 +338,56 @@ def test_analytics_result_is_prepared_for_conversational_llm_answer(engine: Conv
     assert "não podem ser alterados" in response.llm_context
 
 
-def test_unrelated_short_question_does_not_inherit_semob_context(engine: ConversationEngine) -> None:
+def test_open_short_question_does_not_inherit_semob_context(engine: ConversationEngine) -> None:
     engine.handle("user", "short-escape", "Quantos passageiros tivemos em agosto?")
     response = engine.handle("user", "short-escape", "Qual é a capital da França?")
 
-    assert response.kind == "out_of_scope"
+    assert response.kind == "conceptual"
+    assert response.resolution.plan is None
+    assert response.llm_context is None
+
+
+@pytest.mark.parametrize('message', [
+    'teste iniciacl contigo, voce esta funcionando? em que voce pode me ajudar?',
+    'Oi, como você pode me ajudar?',
+    'O que você consegue analisar no dashboard?',
+    'Quais são suas capacidades?',
+    'Como vc funciona?',
+    'Primeiro teste contigo, você está online?',
+])
+def test_introductions_do_not_replay_previous_analytics(engine: ConversationEngine, message: str) -> None:
+    engine.handle('user', 'open-conversation', 'Quantos passageiros tivemos em agosto?')
+    before = engine.sessions.load('user', 'open-conversation').previous_query_plan
+    response = engine.handle('user', 'open-conversation', message)
+    assert response.kind == 'conceptual'
+    assert response.resolution.plan is None
+    assert response.llm_context is None
+    assert engine.sessions.load('user', 'open-conversation').previous_query_plan == before
+    follow_up = engine.handle('user', 'open-conversation', 'E julho?')
+    assert follow_up.resolution.plan.period.start.isoformat() == '2026-07-01'
+
+
+def test_greeting_does_not_hide_a_real_analytical_request(engine: ConversationEngine) -> None:
+    message = 'Oi, você está funcionando? Qual foi o total de passageiros em agosto?'
+    response = engine.handle('user', 'mixed-greeting', message)
+    assert response.kind == 'analytics'
+    assert response.resolution.plan.period.start.isoformat() == '2026-08-01'
+
+
+@pytest.mark.parametrize('message', [
+    'Me ajude a preparar uma apresentação sobre passageiros.',
+    'Escreva um código Python para analisar os passageiros.',
+    'Me ajude a organizar um plano de melhoria da operação.',
+])
+def test_work_support_is_not_replaced_by_an_aggregate(engine: ConversationEngine, message: str) -> None:
+    fresh = engine.handle('user', 'work-fresh', message)
+    assert fresh.kind == 'conceptual'
+    assert fresh.resolution.plan is None
+    engine.handle('user', 'work-evidence', 'Quantos passageiros tivemos em agosto?')
+    response = engine.handle('user', 'work-evidence', message)
+    assert response.kind == 'conceptual'
+    assert response.resolution.plan is None
+    assert 'EVIDÊNCIAS ANALÍTICAS' in response.llm_context
 
 
 @pytest.mark.parametrize("seed", ("Quantos pagantes em agosto?", "Quantos passageiros em julho?", "Compare passageiros de julho e agosto."))

@@ -8,7 +8,7 @@ from datetime import date
 from semob_ai.analytics.planner import MONTHS, plan_question
 from semob_ai.analytics.query_plan import DatePeriod, OrderBy, QueryFilter, QueryPlan
 from semob_ai.conversation.models import ConversationState, FollowUpType, ResolvedRequest
-from semob_ai.guardrails.scope import is_conversational_message
+from semob_ai.guardrails.scope import is_conversational_message, is_work_support_message
 
 
 def _plain(value: str) -> str:
@@ -270,6 +270,13 @@ class FollowUpResolver:
                 original_question=message, resolved_question=message,
                 is_follow_up=state.has_analytics_context,
                 follow_up_type=FollowUpType.FOLLOW_UP, confidence="HIGH",
+            )
+        if is_work_support_message(message):
+            return ResolvedRequest(
+                original_question=message, resolved_question=message,
+                is_follow_up=state.has_analytics_context,
+                follow_up_type=FollowUpType.FOLLOW_UP, confidence="HIGH",
+                response_mode="insight" if state.has_analytics_context else "standard",
             )
         # Only the requested correction is an anchor, not the erroneous dates it quotes.
         correction = re.search(r"(?:precisa ser|quis dizer|corrigindo)[,:\s]+(.+)$", question)

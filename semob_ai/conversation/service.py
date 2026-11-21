@@ -15,8 +15,9 @@ from semob_ai.guardrails import check_scope
 
 
 SCOPE_REFUSAL = (
-    "Posso ajudar somente com transporte público municipal e análise dos dados autorizados da SEMOB. "
-    "Reformule a pergunta dentro desse tema."
+    "Meu foco neste dashboard é ajudar com mobilidade, análise de dados e o trabalho da equipe. "
+    "Posso explicar indicadores, discutir ideias e preparar textos ou apresentações. "
+    "Se esse pedido faz parte de uma tarefa sua, me conte o objetivo para eu ajudar nesse contexto."
 )
 
 

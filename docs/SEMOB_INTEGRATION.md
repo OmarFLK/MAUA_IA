@@ -52,6 +52,7 @@ Retorna `answer`, `assistant: "cmob"`, `kind`, `sources`, `conversation_id` e `p
 - O identificador do usuário é inserido pelo backend SEMOB a partir da sessão; o navegador não escolhe outra identidade.
 - O provedor usa identidades internas inativas, sem login, separadas das contas normais do MAUA_IA. Conversas são separadas por usuário, identificador de conversa e período/intervalo selecionados.
 - O período do dashboard é o padrão para perguntas sem datas. Uma data explícita na pergunta prevalece. Intervalos inválidos são recusados.
+- A conversa aceita apresentações, testes de funcionamento, perguntas sobre capacidades e apoio a textos, apresentações, planilhas ou código. Não é necessário repetir palavras-chave da SEMOB. Essas interações não repetem automaticamente a última consulta nem atribuem fontes antigas a uma saudação; pedidos mistos com uma consulta numérica continuam usando o cálculo analítico.
 - A API sempre seleciona CMob. Um campo superior `assistant: "general"` é recusado. Preferências não trocam o assistente nem o prompt controlado pelo servidor.
 - Contexto enviado pelo dashboard não substitui documentos nem resultados analíticos autorizados. O RAG e as consultas são executados no MAUA_IA.
 - Resultados analíticos são devolvidos diretamente, com números e cobertura exatos. Respostas conceituais usam o modelo com o contexto RAG.

@@ -135,6 +135,60 @@ def test_integration_reports_missing_rag_and_model_failure_without_fabricating(c
     assert client.post('/api/integrations/semob/chat', headers=integration_headers, json=payload).status_code == 503
 
 
+def test_integration_answers_reported_introduction_without_old_numbers_or_sources(client, integration_headers, monkeypatch):
+    from backend import main
+    captured = []
+    monkeypatch.setattr(main.settings, 'baro_api_key', 'test-provider-key')
+
+    async def completion(request, context=''):
+        captured.append((request, context))
+        yield main.ndjson({'type': 'delta', 'content': 'Sim, estou aqui! Posso explicar indicadores e ajudar nas suas análises.'})
+        yield main.ndjson({'type': 'done'})
+
+    monkeypatch.setattr(main, 'stream_completion', completion)
+    base = {'user_id': 'intro-regression', 'conversation_id': 'workspace', 'context': {'period': '2026-08'}}
+    first = client.post('/api/integrations/semob/chat', headers=integration_headers, json={
+        **base, 'message': 'Qual foi o total de passageiros em agosto de 2026?',
+    })
+    assert first.status_code == 200
+    assert first.json()['kind'] == 'analytics'
+    message = 'teste iniciacl contigo, voce esta funcionando? em que voce pode me ajudar?'
+    response = client.post('/api/integrations/semob/chat', headers=integration_headers, json={**base, 'message': message})
+    assert response.status_code == 200, response.text
+    assert response.json()['kind'] == 'conceptual'
+    assert response.json()['sources'] == []
+    assert response.json()['answer'].startswith('Sim, estou aqui!')
+    assert captured[-1][0].messages[-1].content == message
+    assert 'explique suas capacidades' in captured[-1][1]
+    assert '#trecho-' not in captured[-1][1]
+    assert 'EVIDÊNCIAS ANALÍTICAS' not in captured[-1][1]
+
+
+def test_integration_work_support_uses_current_evidence_and_keeps_cmob(client, integration_headers, monkeypatch):
+    from backend import main
+    captured = []
+    monkeypatch.setattr(main.settings, 'baro_api_key', 'test-provider-key')
+
+    async def completion(request, context=''):
+        captured.append((request, context))
+        yield main.ndjson({'type': 'delta', 'content': 'Vamos organizar uma apresentação com os resultados calculados.'})
+        yield main.ndjson({'type': 'done'})
+
+    monkeypatch.setattr(main, 'stream_completion', completion)
+    base = {'user_id': 'work-regression', 'context': {'period': '2026-08'}}
+    assert client.post('/api/integrations/semob/chat', headers=integration_headers, json={
+        **base, 'message': 'Qual foi o total de passageiros em agosto de 2026?',
+    }).status_code == 200
+    response = client.post('/api/integrations/semob/chat', headers=integration_headers, json={
+        **base, 'message': 'Me ajude a preparar uma apresentação sobre esses passageiros.',
+    })
+    assert response.status_code == 200, response.text
+    assert response.json()['kind'] == 'conceptual'
+    assert response.json()['assistant'] == 'cmob'
+    assert 'CMob: passengers_daily' in response.json()['sources']
+    assert 'EVIDÊNCIAS ANALÍTICAS' in captured[-1][1]
+
+
 def test_integration_key_generation_is_scoped_and_rate_limited(client, integration_headers):
     import hashlib
     import time

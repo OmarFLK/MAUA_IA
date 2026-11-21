@@ -165,7 +165,9 @@ async def integration_chat(payload: IntegrationChatRequest) -> IntegrationChatRe
             raise HTTPException(503, "A base analítica da IA não está disponível.")
         sources = list(prepared.sources)
         state = prepared.conversation.state if prepared.conversation else None
-        if state and state.previous_query_result_summary:
+        if state and state.previous_query_result_summary and (
+            prepared.kind == "analytics" or prepared.conversation.llm_context
+        ):
             for result in state.previous_query_result_summary.values():
                 if isinstance(result, dict) and result.get("source_table"):
                     sources.append(f"CMob: {result['source_table']}")

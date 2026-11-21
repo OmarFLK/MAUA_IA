@@ -111,8 +111,13 @@ class CMobAssistant:
         context_parts = [conversation.llm_context] if conversation.llm_context else []
         if social:
             context_parts.append(
-                "A mensagem atual é uma interação social, não uma consulta de dados. "
-                "Responda brevemente sem repetir resultados anteriores."
+                "A mensagem atual é uma conversa de apresentação, ajuda ou teste de funcionamento. "
+                "Responda diretamente e com naturalidade. Se perguntarem como pode ajudar, explique "
+                "suas capacidades com exemplos úteis para o dashboard, como analisar indicadores, "
+                "explicar conceitos, interpretar resultados e organizar textos ou ideias. "
+                "Não recuse a mensagem por falta da palavra SEMOB, não repita números de consultas "
+                "anteriores e não alegue ter feito diagnósticos da infraestrutura. "
+                "Uma recusa antiga no histórico não se aplica a esta interação."
             )
         context_parts.extend(
             f"[{chunk.source}#trecho-{chunk.chunk_index}] {chunk.text}" for chunk in chunks
